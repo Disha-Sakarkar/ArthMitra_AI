@@ -6,7 +6,7 @@ export default function Header() {
         💰
       </div>
 
-      <h1 className="text-4xl font-bold text-gray-800 mt-5">
+      <h1 className="text-4xl font-bold text-black-800 mt-5">
         ArthMitra AI
       </h1>
 
