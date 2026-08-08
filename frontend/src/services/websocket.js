@@ -1,7 +1,15 @@
 let socket = null;
 let isConnecting = false;
+let currentAudio = null;
 
-export const connectSocket = (onMessage) => {
+export const connectSocket = (
+    onMessage,
+    onOpen,
+    onClose,
+    onError,
+    onAudioStart,
+    onAudioEnd
+) => {
 
     if (socket && socket.readyState === WebSocket.OPEN) {
         return;
@@ -23,6 +31,9 @@ export const connectSocket = (onMessage) => {
 
         isConnecting = false;
 
+        if (onOpen) {
+            onOpen();
+        }
     };
 
     socket.onclose = () => {
@@ -31,12 +42,22 @@ export const connectSocket = (onMessage) => {
 
         isConnecting = false;
 
+        socket = null;
+
+        if (onClose) {
+            onClose();
+        }
     };
 
     socket.onerror = (err) => {
 
-        console.error(err);
+        console.error("WebSocket Error:", err);
 
+        isConnecting = false;
+
+        if (onError) {
+            onError(err);
+        }
     };
 
     socket.onmessage = (event) => {
@@ -45,49 +66,132 @@ export const connectSocket = (onMessage) => {
 
             const data = JSON.parse(event.data);
 
-            // Play every assistant reply automatically
+            // Every assistant reply has audio
             if (data.type === "reply" && data.audio) {
 
-                const audio = new Audio(data.audio);
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
 
-                audio.play().catch(console.error);
+                currentAudio = new Audio(data.audio);
 
+                currentAudio.onplay = () => {
+
+                    console.log("🔊 Assistant speaking");
+
+                    if (onAudioStart) {
+                        onAudioStart();
+                    }
+                };
+
+                currentAudio.onended = () => {
+
+                    console.log("🔇 Assistant finished speaking");
+
+                    if (onAudioEnd) {
+                        onAudioEnd();
+                    }
+
+                    currentAudio = null;
+                };
+
+                currentAudio.onerror = () => {
+
+                    console.error("Audio playback failed");
+
+                    if (onAudioEnd) {
+                        onAudioEnd();
+                    }
+
+                    currentAudio = null;
+                };
+
+                currentAudio.play().catch((error) => {
+
+                    console.error("Audio playback blocked:", error);
+
+                    if (onAudioEnd) {
+                        onAudioEnd();
+                    }
+
+                });
             }
 
-            onMessage(data);
+            if (onMessage) {
+                onMessage(data);
+            }
 
         } catch {
 
-            console.log(event.data);
+            console.log("Non-JSON WebSocket message:", event.data);
+
+        }
+    };
+};
+
+
+export const disconnectSocket = () => {
+
+    if (currentAudio) {
+
+        currentAudio.pause();
+
+        currentAudio.currentTime = 0;
+
+        currentAudio = null;
+    }
+
+    if (socket) {
+
+        if (
+            socket.readyState === WebSocket.OPEN ||
+            socket.readyState === WebSocket.CONNECTING
+        ) {
+
+            socket.close();
 
         }
 
-    };
+        socket = null;
+    }
 
+    isConnecting = false;
+
+    console.log("📞 Call ended");
 };
+
 
 export const getSocket = () => socket;
 
+
 export const sendJSON = (data) => {
 
-    if (!socket) return false;
+    if (!socket) {
+        return false;
+    }
 
-    if (socket.readyState !== WebSocket.OPEN) return false;
+    if (socket.readyState !== WebSocket.OPEN) {
+        return false;
+    }
 
     socket.send(JSON.stringify(data));
 
     return true;
-
 };
+
 
 export const sendAudio = (buffer) => {
 
-    if (!socket) return false;
+    if (!socket) {
+        return false;
+    }
 
-    if (socket.readyState !== WebSocket.OPEN) return false;
+    if (socket.readyState !== WebSocket.OPEN) {
+        return false;
+    }
 
     socket.send(buffer);
 
     return true;
-
 };
