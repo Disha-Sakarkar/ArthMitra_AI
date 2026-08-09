@@ -6,9 +6,14 @@ from app.services.deepgram_service import transcribe
 from app.services.gemini_service import get_ai_response
 from app.services.murf_service import generate_audio
 from app.services.conversation_manager import ConversationManager
-from app.prompts.greeting import GREETING
+from app.memory import init_db
 
 app = FastAPI(title="ArthMitra AI")
+
+
+@app.on_event("startup")
+def initialise_memory() -> None:
+    init_db()
 
 
 class ChatRequest(BaseModel):
@@ -24,7 +29,7 @@ def home():
 
 @app.post("/chat")
 def chat(data: ChatRequest):
-    reply = get_ai_response(data.message)
+    reply = get_ai_response([{"role": "user", "content": data.message}])
 
     return {
         "reply": reply
@@ -38,28 +43,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
     print("✅ Client Connected")
 
-    # New conversation for every websocket session
+    # New conversation for every websocket session; durable memory is looked up by Gemini.
     conversation = ConversationManager()
+    caller_id = None
 
     try:
-
-        # -----------------------------
-        # Greeting
-        # -----------------------------
-
-        greeting_audio = generate_audio(GREETING)
-
-        conversation.add_assistant_message(GREETING)
-
-        await websocket.send_json({
-
-            "type": "reply",
-
-            "text": GREETING,
-
-            "audio": greeting_audio
-
-        })
 
         while True:
 
@@ -73,7 +61,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 data = json.loads(message["text"])
 
-                print(data)
+                if data.get("type") == "session_init" and data.get("user_id"):
+                    caller_id = str(data["user_id"])
+                    conversation.add_user_message("A new voice call has started. Greet the caller.")
+                    greeting = get_ai_response(conversation.get_messages(), caller_id)
+                    conversation.add_assistant_message(greeting)
+                    await websocket.send_json({
+                        "type": "reply",
+                        "text": greeting,
+                        "audio": generate_audio(greeting),
+                    })
 
             # -----------------------------
             # AUDIO
@@ -103,11 +100,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # Gemini with history
 
-                reply = get_ai_response(
-
-                    conversation.get_messages()
-
-                )
+                reply = get_ai_response(conversation.get_messages(), caller_id)
 
                 # Store assistant reply
 

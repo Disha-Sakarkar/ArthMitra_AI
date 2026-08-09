@@ -23,6 +23,15 @@ function App() {
 
     const [callActive, setCallActive] = useState(false);
 
+    const callerId = (() => {
+        const storedId = localStorage.getItem("arthmitra_caller_id");
+        if (storedId) return storedId;
+
+        const newId = crypto.randomUUID();
+        localStorage.setItem("arthmitra_caller_id", newId);
+        return newId;
+    })();
+
 
     // --------------------------------------------------
     // Start Call
@@ -101,7 +110,9 @@ function App() {
 
                 setStatus("listening");
 
-            }
+            },
+
+            callerId
 
         );
 

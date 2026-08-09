@@ -8,7 +8,8 @@ export const connectSocket = (
     onClose,
     onError,
     onAudioStart,
-    onAudioEnd
+    onAudioEnd,
+    callerId
 ) => {
 
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -33,6 +34,10 @@ export const connectSocket = (
 
         if (onOpen) {
             onOpen();
+        }
+
+        if (callerId) {
+            sendJSON({ type: "session_init", user_id: callerId });
         }
     };
 

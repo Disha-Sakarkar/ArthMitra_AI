@@ -1,7 +1,7 @@
 GREETING = """
 Hello! 👋
-
-I'm अर्थमित्र AI, your Financial Voice Assistant for Bharat.
+"""
+'''I'm अर्थमित्र AI, your Financial Voice Assistant for Bharat.
 
 I can help you understand:
 
@@ -11,4 +11,4 @@ I can help you understand:
 • Financial fraud awareness
 
 How may I help you today?
-"""
+'''
