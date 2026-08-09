@@ -33,18 +33,6 @@ User speech → Deepgram STT → Gemini → Murf TTS → voice response
 - Added user and assistant chat bubbles, audio feedback, microphone permission errors, call controls, and restart flow.
 - Made the experience responsive: the capability panel and conversation area stack on smaller screens.
 
-### Day 4 – Consent-based caller memory
-
-ArthMitra can now remember useful, non-sensitive context across voice calls—but only with the caller’s explicit permission.
-
-- Each browser receives a persistent anonymous caller ID stored in `localStorage` and sends it when a WebSocket session begins.
-- Caller memory is stored locally in SQLite and initialised when the FastAPI app starts.
-- Gemini has controlled function tools to look up the active caller and save memory after consent.
-- On a returning caller’s greeting, ArthMitra can welcome them back by name and continue an approved follow-up topic.
-- The assistant must explain what it wants to remember and receive an explicit “yes” before saving anything.
-- Memory is limited to a name, language preference, scheme interests, scheme/eligibility answers, and a follow-up topic.
-- The backend rejects memory saves without consent and blocks sensitive keys or long number strings, including account, card, Aadhaar, PAN, OTP, PIN, password, CVV, and IFSC-related data.
-- Unit tests cover permitted storage, missing consent, and sensitive-data rejection.
 
 ```text
 New / returning caller
