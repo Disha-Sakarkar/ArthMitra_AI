@@ -140,22 +140,6 @@ ArthMitra provides educational financial guidance, not personalised financial, l
 
 Persistent memory is opt-in. The implementation stores only a narrow, approved set of non-sensitive conversation details and rejects sensitive financial or identity information.
 
-## Current limitations
-
-- Recording uses a fixed audio window; speech is not yet continuously streamed.
-- Gemini and Murf responses are generated before playback rather than streamed progressively.
-- This produces an end-to-end baseline latency of roughly 10–12 seconds after the user stops speaking.
-- Caller memory is local to the current backend’s SQLite database and is not yet accompanied by a user-facing memory-management or deletion screen.
-- Scheme guidance should be verified against official sources when users need current eligibility or policy details.
-
-## Next steps
-
-- Stream speech-to-text and Murf Falcon audio to reduce perceived latency.
-- Improve multilingual voice quality and language detection.
-- Add official scheme-information workflows and source-backed responses.
-- Add caller-facing controls to view, update, or delete saved memory.
-- Deploy the voice experience for broader access.
-
 ## Vision
 
 ArthMitra AI aims to make financial information easier to understand for people who face language, digital-literacy, or complexity barriers. It is an accessible conversational layer—not a replacement for banks or financial institutions.
