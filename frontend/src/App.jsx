@@ -58,6 +58,16 @@ function App() {
                     message
                 ]);
 
+                if (message.type === "reply" && message.service_unavailable) {
+                    setErrorMessage(
+                        "ArthMitra is temporarily unavailable. The fallback reply is shown in the conversation."
+                    );
+                } else if (message.type === "reply" && message.audio_error) {
+                    setErrorMessage(
+                        "The voice reply could not play, but ArthMitra's response is shown as text below."
+                    );
+                }
+
             },
 
 

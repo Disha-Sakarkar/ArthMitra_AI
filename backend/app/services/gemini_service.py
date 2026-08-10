@@ -5,12 +5,17 @@ from typing import Any
 from app.memory import get_user, save_user
 from app.prompts.system_prompt import SYSTEM_PROMPT
 from app.services.exchange_rate_service import get_live_exchange_rate
+from app.services.scheme_service import lookup_government_scheme
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+TEMPORARY_UNAVAILABLE_RESPONSE = (
+    "I am sorry, ArthMitra is temporarily unavailable. Please try again in a moment."
+)
 
 
 AGENT_TOOLS = types.Tool(
@@ -37,6 +42,22 @@ AGENT_TOOLS = types.Tool(
                     "consent": types.Schema(type="BOOLEAN"),
                 },
                 required=["user_id", "consent"],
+            ),
+        ),
+        types.FunctionDeclaration(
+            name="lookup_government_scheme",
+            description=(
+                "Look up a named Indian central-government scheme in ArthMitra's local curated "
+                "dataset. Call this before answering about the eligibility, benefits, documents, "
+                "enrolment, ministry, or official portal of a specific scheme or common scheme "
+                "abbreviation, such as PMJDY, PMSBY, PMJJBY, APY, or PMMY. Do not call it for "
+                "generic financial education or a scheme that the caller has not named. This is "
+                "local reference data and the result includes its as-of date and official portal."
+            ),
+            parameters=types.Schema(
+                type="OBJECT",
+                properties={"scheme_query": types.Schema(type="STRING", description="The scheme name or common abbreviation stated by the caller")},
+                required=["scheme_query"],
             ),
         ),
         types.FunctionDeclaration(
@@ -87,6 +108,8 @@ def _run_tool(
             return get_live_exchange_rate(
                 arguments.get("base_currency", ""), arguments.get("quote_currency", "")
             )
+        if name == "lookup_government_scheme":
+            return lookup_government_scheme(arguments.get("scheme_query", ""))
         return {"error": "Unknown memory function"}
     except (KeyError, PermissionError, ValueError) as error:
         return {"saved": False, "error": str(error)}
@@ -103,36 +126,26 @@ def _prompt_from_messages(messages: list[dict[str, str]], caller_id: str | None)
 
 def get_ai_response(messages: list[dict[str, str]], caller_id: str | None = None) -> str:
     """Generate a response, allowing Gemini to call the consented-memory functions."""
-    contents: list[Any] = [_prompt_from_messages(messages, caller_id)]
-    config = types.GenerateContentConfig(
-        system_instruction=SYSTEM_PROMPT,
-        tools=[AGENT_TOOLS],
-        temperature=0.3,
-    )
-
-    for _ in range(4):
-        response = client.models.generate_content(
-            model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
-            contents=contents,
-            config=config,
+    try:
+        contents: list[Any] = [_prompt_from_messages(messages, caller_id)]
+        config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            tools=[AGENT_TOOLS],
+            temperature=0.3,
         )
-        function_calls = response.function_calls or []
-        if not function_calls:
-            return response.text or "I am sorry, I could not prepare a response."
-
-        contents.append(response.candidates[0].content)
-        for call in function_calls:
-            result = _run_tool(call.name, dict(call.args or {}), caller_id)
-            contents.append(
-                types.Content(
-                    role="tool",
-                    parts=[
-                        types.Part.from_function_response(
-                            name=call.name,
-                            response={"result": result},
-                        )
-                    ],
-                )
+        for _ in range(4):
+            response = client.models.generate_content(
+                model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
+                contents=contents,
+                config=config,
             )
-
-    return "I am sorry, I could not complete that memory request."
+            function_calls = response.function_calls or []
+            if not function_calls:
+                return response.text or "I am sorry, I could not prepare a response."
+            contents.append(response.candidates[0].content)
+            for call in function_calls:
+                result = _run_tool(call.name, dict(call.args or {}), caller_id)
+                contents.append(types.Content(role="tool", parts=[types.Part.from_function_response(name=call.name, response={"result": result})]))
+        return "I am sorry, I could not complete that request right now."
+    except Exception:
+        return TEMPORARY_UNAVAILABLE_RESPONSE

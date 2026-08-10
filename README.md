@@ -71,6 +71,16 @@ ArthMitra now has a Gemini function tool, `get_live_exchange_rate`, for question
 
 Try it after connecting to the agent: **“What is today’s USD to INR exchange rate?”** The agent should call the tool without being explicitly told to do so. To exercise the failure path, disconnect the backend from the internet or temporarily set `EXCHANGE_RATE_URL` in `backend/app/services/exchange_rate_service.py` to an invalid address; the spoken reply should say the live rate is temporarily unavailable.
 
+### Local central-government scheme lookup
+
+ArthMitra also has a `lookup_government_scheme` function tool for named Indian central-government schemes. It uses the hand-built local dataset at `backend/app/data/government_schemes.json`; it is **not live data**. The dataset covers PMJDY, PMSBY, PMJJBY, APY, and PMMY, is labelled with an as-of date, and links each result to an official portal for final verification.
+
+The function description tells Gemini to call it only for questions about a named scheme’s eligibility, benefits, documents, enrolment, ministry, or official portal. It must not guess a scheme’s details when the lookup does not find it.
+
+Failure handling is visible in the conversation: transcription failures, Gemini/backend failures, and Murf audio failures all preserve the WebSocket session and send a readable fallback reply to the frontend. If audio generation fails, the response remains visible as text; if the assistant service is unavailable, the UI also shows a status message above the conversation.
+
+Try: **“What are the eligibility rules for PMSBY?”** To test the local-data failure path, temporarily rename `backend/app/data/government_schemes.json`; the assistant should say that the local scheme information is unavailable rather than inventing an answer.
+
 ## Current architecture
 
 ```text
