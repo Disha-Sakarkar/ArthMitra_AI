@@ -1,12 +1,12 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
 import json
 
+from app.memory import init_db
+from app.services.conversation_manager import ConversationManager
 from app.services.deepgram_service import transcribe
 from app.services.gemini_service import get_ai_response
 from app.services.murf_service import generate_audio
-from app.services.conversation_manager import ConversationManager
-from app.memory import init_db
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 
 app = FastAPI(title="ArthMitra AI")
 

@@ -1,490 +1,187 @@
-# 💰 ArthMitra AI
+# ArthMitra AI
 
-> **Your AI Financial Voice Assistant for Bharat 🇮🇳**
+> Your AI financial voice assistant for Bharat.
 
-ArthMitra AI is an AI-powered voice agent built for the **Murf AI – 10 Days of Voice Agents: VoiceForBharat Edition** challenge.
+ArthMitra AI is a voice-first financial education assistant built for the **Murf AI – 10 Days of Voice Agents: VoiceForBharat Edition** challenge, Financial Services track. It explains government schemes, banking, digital payments, financial literacy, and fraud awareness in clear, conversational language.
 
-**Track:** Financial Services
+## Challenge progress
 
-ArthMitra AI is designed to make financial information easier to access through voice, helping users understand government schemes, banking concepts, digital payments, and financial fraud awareness.
+### Day 1 – Voice agent foundation
 
----
-
-# 🚀 Challenge Progress
-
-## ✅ Day 1 – Voice Agent Foundation
-
-Built the initial voice conversation pipeline.
-
-### Completed
-
-- React frontend
-- FastAPI backend
-- WebSocket communication
-- Speech-to-Text using Deepgram
-- AI responses using Gemini 2.5 Flash
-- Text-to-Speech using Murf AI
-- Indian English voice
-- Initial voice conversation interface
-
-### Initial Pipeline
+- React + Vite frontend and FastAPI backend
+- WebSocket voice-conversation pipeline
+- Deepgram speech-to-text
+- Gemini-powered responses
+- Murf AI text-to-speech with an Indian English voice
 
 ```text
-User Speech
-     ↓
-Deepgram STT
-     ↓
-Gemini
-     ↓
-Murf AI TTS
-     ↓
-Voice Response
+User speech → Deepgram STT → Gemini → Murf TTS → voice response
 ```
 
-### Voice Choice
+### Day 2 – Personality, context, and guardrails
 
-An Indian English voice was selected because financial guidance should sound calm, trustworthy, and easy to understand for users across Bharat.
+- Defined ArthMitra as a trustworthy financial assistant for Bharat.
+- Added session-based conversation history for natural follow-up questions.
+- Added an automatic spoken greeting when a voice call begins.
+- Supports English, Hindi, and Hindi–English code-mixed conversations by mirroring the user’s language.
+- Added financial-safety guardrails: ArthMitra never asks for an OTP, PIN, password, CVV, card number, or account number, and cannot access accounts or perform transactions.
 
-### Day 1 Baseline Latency
+### Day 3 – Personalised financial-services frontend
 
-**End of user speech → first audio response: approximately 10–12 seconds.**
+- Built a financial-services visual identity with a dedicated capability panel and conversation workspace.
+- Added clear voice-agent states: Ready, Connecting, Listening, Speaking, and Call Ended.
+- Added user and assistant chat bubbles, audio feedback, microphone permission errors, call controls, and restart flow.
+- Made the experience responsive: the capability panel and conversation area stack on smaller screens.
 
-This latency is being treated as the baseline for future optimization.
+### Day 4 – Consent-based caller memory
 
----
+ArthMitra can now remember useful, non-sensitive context across voice calls—but only with the caller’s explicit permission.
 
-# ✅ Day 2 – Personality, Job & Guardrails
-
-ArthMitra AI was given a defined role, objectives, conversation memory, language behavior, and safety boundaries.
-
-## 🧑 Identity
-
-ArthMitra AI is a trustworthy Financial Voice Assistant built for Bharat.
-
-It helps users understand:
-
-- Government schemes
-- Banking services
-- Digital payments
-- Financial literacy
-- Fraud awareness
-
----
-
-## 🎯 Call Objectives
-
-A successful conversation should help the user:
-
-1. Understand government schemes in simple language.
-2. Improve their understanding of banking and digital payments.
-3. Recognize and avoid common financial frauds.
-
----
-
-## 🧠 Conversation History
-
-Implemented session-based conversation history.
-
-ArthMitra AI can now:
-
-- Remember previous turns within a session.
-- Handle follow-up questions.
-- Maintain context across multiple turns.
-- Preserve its persona throughout the conversation.
-
-The conversation history is managed separately for each WebSocket session.
-
----
-
-## 👋 Automatic Greeting
-
-When a client connects, ArthMitra AI automatically introduces itself.
-
-The greeting:
-
-- Appears in the frontend.
-- Is converted to speech using Murf AI.
-- Is played automatically to the user.
-
-Example:
-
-> Hello! I'm ArthMitra AI, your Financial Voice Assistant for Bharat. I can help you understand government schemes, banking services, digital payments, and financial fraud awareness. How may I help you today?
-
----
-
-## 🌏 Language & Code-Mixed Support
-
-ArthMitra AI is designed to mirror the user's language.
-
-It can handle:
-
-- English
-- Hindi
-- Hindi + English code-mixed conversations
-
-Example:
+- Each browser receives a persistent anonymous caller ID stored in `localStorage` and sends it when a WebSocket session begins.
+- Caller memory is stored locally in SQLite and initialised when the FastAPI app starts.
+- Gemini has controlled function tools to look up the active caller and save memory after consent.
+- On a returning caller’s greeting, ArthMitra can welcome them back by name and continue an approved follow-up topic.
+- The assistant must explain what it wants to remember and receive an explicit “yes” before saving anything.
+- Memory is limited to a name, language preference, scheme interests, scheme/eligibility answers, and a follow-up topic.
+- The backend rejects memory saves without consent and blocks sensitive keys or long number strings, including account, card, Aadhaar, PAN, OTP, PIN, password, CVV, and IFSC-related data.
+- Unit tests cover permitted storage, missing consent, and sensitive-data rejection.
 
 ```text
-User:
-Mujhe PM Jan Dhan account open karna hai.
+New / returning caller
+        ↓
+Browser caller ID (localStorage)
+        ↓
+WebSocket session_init
+        ↓
+Gemini lookup_caller tool
+        ↓
+SQLite consented memory
+        ↓
+Personalised, safety-bounded greeting or follow-up
 ```
 
-The assistant responds in a similar conversational register.
+### Day 5 - Live financial-data tool
 
----
+ArthMitra now has a Gemini function tool, `get_live_exchange_rate`, for questions that need current financial data, such as “What is today’s USD to INR rate?” The model is instructed to call it for live/current exchange-rate or conversion requests, rather than guessing from its training data.
 
-## 🛡 Financial Safety Guardrails
+- **Data is live:** the backend fetches the public ExchangeRate-API open-access feed at request time; it is not a hand-built local dataset.
+- Every successful tool result includes the provider’s **last-updated timestamp**, which ArthMitra must speak naturally along with the reference rate.
+- Rates are reference market rates only; a bank or authorised money changer may quote a different customer rate.
+- The lookup uses a five-second timeout. If the source is unavailable, the tool returns an explicit unavailable result and the assistant says it cannot fetch the live rate right now—it does not invent one.
 
-ArthMitra AI must never ask users for:
+Try it after connecting to the agent: **“What is today’s USD to INR exchange rate?”** The agent should call the tool without being explicitly told to do so. To exercise the failure path, disconnect the backend from the internet or temporarily set `EXCHANGE_RATE_URL` in `backend/app/services/exchange_rate_service.py` to an invalid address; the spoken reply should say the live rate is temporarily unavailable.
 
-- OTP
-- PIN
-- Password
-- CVV
-- Debit/Credit Card number
-
-It must never claim that it can:
-
-- Access a bank account
-- Perform a banking transaction
-- Approve a government scheme
-- Approve a loan
-- Verify Aadhaar
-- Recover money
-- Act as a bank employee
-
-### Escalation
-
-For account-specific or banking-operation requests, the assistant directs users to their bank's official customer care or nearest branch.
-
-It also reminds users:
-
-> Never share your OTP, PIN, or password with anyone.
-
----
-
-# ✅ Day 3 – Personalised Frontend
-
-Day 3 focused on creating a frontend specifically designed for the **Financial Services** track.
-
-The interface was redesigned around ArthMitra AI rather than using a generic voice-agent layout.
-
----
-
-## 🎨 Financial Services UI
-
-The frontend now uses a financial-services visual identity with:
-
-- Deep indigo and blue tones
-- Professional financial styling
-- Financial-themed background imagery
-- High-contrast chat interface
-- Dedicated capability panel
-- Voice-focused interaction controls
-
-The layout is divided into two primary areas:
+## Current architecture
 
 ```text
-┌──────────────────────┬─────────────────────────────────────┐
-│                      │                                     │
-│    ArthMitra AI      │       Voice / Conversation          │
-│                      │                                     │
-│  What I can help     │       Chat History                  │
-│  you with            │                                     │
-│                      │                                     │
-│  🏛 Government       │                                     │
-│     Schemes          │                                     │
-│                      │                                     │
-│  🏦 Banking          │                                     │
-│     Literacy         │                                     │
-│                      │                                     │
-│  🛡 Fraud Awareness  │       🎙 Voice Controls              │
-│                      │                                     │
-└──────────────────────┴─────────────────────────────────────┘
-
-        30%                         70%
+Browser (React)
+  ├─ microphone recording
+  ├─ persistent anonymous caller ID
+  └─ WebSocket
+          ↓
+FastAPI
+  ├─ Deepgram: speech → transcript
+  ├─ ConversationManager: current-call context
+  ├─ Gemini: response + controlled memory tools
+  ├─ SQLite: consented caller memory
+  └─ Murf AI: response → audio URL
+          ↓
+Browser playback and chat history
 ```
 
-The left section explains the agent's purpose and capabilities, while the right section provides the complete conversation experience.
-
----
-
-# 🎛 Agent States
-
-The frontend now clearly communicates the current state of the voice agent.
-
-### 🟢 Ready
-
-The agent has not started yet.
-
-The user sees a clear:
-
-> 🎙️ Start Voice Call
-
-button.
-
----
-
-### 🟡 Connecting
-
-After starting the call:
-
-> 🔄 Connecting...
-
-The interface tells the user to wait while the WebSocket connection is established.
-
----
-
-### 🔴 Listening
-
-When the agent is ready to receive the user's voice:
-
-> 🎙️ Listening to you
-
-The interface provides a visual voice indicator so the user knows the microphone is active.
-
----
-
-### 🟢 Speaking
-
-When ArthMitra AI is responding:
-
-> 🔊 ArthMitra is speaking
-
-The interface changes its status while the Murf-generated response is playing.
-
----
-
-### ⚪ Call Ended
-
-When the conversation ends:
-
-> ✅ Call ended
-
-The user receives a clear option to:
-
-> 🔄 Start Again
-
----
-
-# 🎙 Speaker & Voice Feedback
-
-The interface makes it clear who is currently speaking.
-
-It uses:
-
-- Listening status
-- Speaking status
-- Animated microphone indicator
-- Voice waveform-style animation
-- Different chat bubbles for the user and ArthMitra AI
-
-This makes the voice interaction easier to understand without relying only on audio.
-
----
-
-# 🎤 Microphone Permission Handling
-
-The frontend now handles microphone permission failures.
-
-If microphone access is denied, the user receives a clear message explaining that microphone access was blocked and is instructed to enable microphone permissions in the browser before trying again.
-
-Other microphone failures, such as no microphone being detected, also produce an appropriate error message.
-
----
-
-# 💬 Conversation Interface
-
-The conversation area now occupies the full available right-side workspace instead of appearing as a small centered chat box.
-
-The interface displays:
-
-- User transcripts
-- ArthMitra AI responses
-- Conversation history
-- Voice interaction controls
-
----
-
-# 📱 Responsive Design
-
-The frontend is designed to adapt to smaller screens.
-
-On larger screens:
-
-```text
-30% Capability Panel | 70% Conversation
-```
-
-On smaller screens, the sections stack vertically to keep the important controls readable and accessible.
-
----
-
-# 🏗 Current Architecture
-
-```text
-                        Browser
-                           │
-                           ▼
-                    React Frontend
-                           │
-                     WebSocket
-                           │
-                           ▼
-                    FastAPI Backend
-                           │
-              ┌────────────┼────────────┐
-              ▼            ▼            ▼
-          Deepgram      Gemini        Murf AI
-             STT          AI            TTS
-              │            │            │
-              └────────────┼────────────┘
-                           ▼
-                     Voice Response
-```
-
----
-
-# 🛠 Tech Stack
-
-## Frontend
-
-- React
-- Tailwind CSS
-- WebSocket
-
-## Backend
-
-- Python
-- FastAPI
-- WebSocket
-
-## AI
-
-- Google Gemini 2.5 Flash
-
-## Speech
-
-- Deepgram Speech-to-Text
-- Murf AI Text-to-Speech
-- Murf Falcon
-
----
-
-# 📂 Project Structure
+## Tech stack
+
+| Area | Technology |
+| --- | --- |
+| Frontend | React, Vite, Tailwind CSS, WebSocket |
+| Backend | Python, FastAPI, SQLite |
+| AI | Google Gemini |
+| Speech | Deepgram STT, Murf AI TTS |
+
+## Project structure
 
 ```text
 ArthMitra-AI/
-│
 ├── backend/
-│   │
 │   ├── app/
+│   │   ├── core/config.py
+│   │   ├── memory.py                 # Consent-gated SQLite caller memory
 │   │   ├── prompts/
 │   │   │   ├── greeting.py
 │   │   │   └── system_prompt.py
-│   │   │
 │   │   └── services/
 │   │       ├── conversation_manager.py
 │   │       ├── deepgram_service.py
-│   │       ├── gemini_service.py
+│   │       ├── gemini_service.py     # Gemini + memory function tools
 │   │       └── murf_service.py
-│   │
-│   └── main.py
-│
+│   ├── main.py                       # FastAPI REST and WebSocket entry point
+│   ├── test_memory.py
+│   └── requirements.txt
 ├── frontend/
-│   │
 │   └── src/
-│       ├── assets/
 │       ├── components/
-│       │   ├── ChatBubble.jsx
-│       │   ├── Header.jsx
-│       │   ├── StatusBadge.jsx
-│       │   └── VoiceButton.jsx
-│       │
-│       ├── services/
-│       │   └── websocket.js
-│       │
+│       ├── services/websocket.js
 │       └── App.jsx
-│
-├── .gitignore
 └── README.md
 ```
 
----
+## Run locally
 
-# ⏱ Current Latency Baseline
+Create `backend/.env` with the required credentials:
 
-Current baseline:
-
-**Approximately 10–12 seconds from end of user speech to first audio response.**
-
-The current implementation waits for:
-
-```text
-Complete Recording
-       ↓
-Deepgram
-       ↓
-Complete Transcript
-       ↓
-Gemini Response
-       ↓
-Complete Murf Audio
-       ↓
-Playback
+```env
+GEMINI_API_KEY=your_key
+DEEPGRAM_API_KEY=your_key
+MURF_API_KEY=your_key
 ```
 
-This is the primary performance limitation currently being tracked.
+Start the backend:
 
----
+```bash
+cd backend
+uvicorn main:app --reload
+```
 
-# ⚠️ Known Limitations
+Start the frontend in another terminal:
 
-- Speech input currently uses a fixed recording window.
-- STT is not yet continuously streamed.
-- Gemini response generation is not yet streamed to the frontend.
-- Murf audio is currently generated before playback rather than being streamed progressively.
-- End-to-end latency is therefore higher than the target experience.
-- Conversation history currently exists only for the active session.
-- Financial information should be treated as educational guidance, not personalized financial advice.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
----
+Run caller-memory tests:
 
-# 📅 Development Roadmap
+```bash
+cd backend
+python -m unittest test_memory.py
+```
 
-The project is being developed incrementally throughout the 10-day challenge.
+## Safety and privacy
 
-Future improvements will focus on:
+ArthMitra provides educational financial guidance, not personalised financial, legal, or investment advice. It never impersonates a bank and directs account-specific requests to official bank customer care or a branch. Never share OTPs, PINs, passwords, card details, or other credentials with anyone.
 
-- Real-time streaming Speech-to-Text
-- Streaming Murf Falcon TTS
-- Lower perceived latency
-- More natural voice conversations
-- Improved multilingual support
-- Financial scheme information
-- Fraud-awareness workflows
-- Real-world voice accessibility
-- Deployment for users
+Persistent memory is opt-in. The implementation stores only a narrow, approved set of non-sensitive conversation details and rejects sensitive financial or identity information.
 
----
+## Current limitations
 
-# 🇮🇳 Vision
+- Recording uses a fixed audio window; speech is not yet continuously streamed.
+- Gemini and Murf responses are generated before playback rather than streamed progressively.
+- This produces an end-to-end baseline latency of roughly 10–12 seconds after the user stops speaking.
+- Caller memory is local to the current backend’s SQLite database and is not yet accompanied by a user-facing memory-management or deletion screen.
+- Scheme guidance should be verified against official sources when users need current eligibility or policy details.
 
-Many people in India face barriers when accessing financial information because of language, digital literacy, and the complexity of banking systems.
+## Next steps
 
-**ArthMitra AI** aims to make financial information easier to understand through a simple voice-first interface.
+- Stream speech-to-text and Murf Falcon audio to reduce perceived latency.
+- Improve multilingual voice quality and language detection.
+- Add official scheme-information workflows and source-backed responses.
+- Add caller-facing controls to view, update, or delete saved memory.
+- Deploy the voice experience for broader access.
 
-The goal is not to replace banks or financial institutions, but to provide an accessible conversational layer that helps users understand financial services and recognize potential fraud.
+## Vision
 
----
+ArthMitra AI aims to make financial information easier to understand for people who face language, digital-literacy, or complexity barriers. It is an accessible conversational layer—not a replacement for banks or financial institutions.
 
-# 🏆 Challenge
-
-Built as part of:
-
-**Murf AI – 10 Days of Voice Agents**  
-**VoiceForBharat Edition**
-
-**Track:** Financial Services
-
-#VoiceForBharat
+Built for **Murf AI – 10 Days of Voice Agents, VoiceForBharat Edition**.
+Track: **Financial Services**

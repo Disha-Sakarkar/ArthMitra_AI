@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Optional
 
-
 DB_PATH = Path(__file__).resolve().parents[1] / "arthmitra.db"
 ALLOWED_FACT_KEYS = {
     "schemes_checked",

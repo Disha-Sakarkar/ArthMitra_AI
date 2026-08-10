@@ -4,6 +4,7 @@ from typing import Any
 
 from app.memory import get_user, save_user
 from app.prompts.system_prompt import SYSTEM_PROMPT
+from app.services.exchange_rate_service import get_live_exchange_rate
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -12,7 +13,7 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
-MEMORY_TOOLS = types.Tool(
+AGENT_TOOLS = types.Tool(
     function_declarations=[
         types.FunctionDeclaration(
             name="lookup_caller",
@@ -38,6 +39,25 @@ MEMORY_TOOLS = types.Tool(
                 required=["user_id", "consent"],
             ),
         ),
+        types.FunctionDeclaration(
+            name="get_live_exchange_rate",
+            description=(
+                "Fetch the current reference market exchange rate for a specific pair of "
+                "three-letter currencies, such as USD to INR. Call this whenever the caller "
+                "asks for today's, current, latest, or live exchange rate, or asks to convert "
+                "an amount using a current rate. Do not call it for general explanations of "
+                "foreign exchange, historical rates, or bank-account questions. The response "
+                "includes when the source was last updated and may say unavailable."
+            ),
+            parameters=types.Schema(
+                type="OBJECT",
+                properties={
+                    "base_currency": types.Schema(type="STRING", description="Three-letter source currency code, e.g. USD"),
+                    "quote_currency": types.Schema(type="STRING", description="Three-letter target currency code, e.g. INR"),
+                },
+                required=["base_currency", "quote_currency"],
+            ),
+        ),
     ]
 )
 
@@ -46,7 +66,10 @@ def _run_tool(
     name: str, arguments: dict[str, Any], active_caller_id: str | None
 ) -> dict[str, Any]:
     try:
-        if not active_caller_id or arguments.get("user_id") != active_caller_id:
+        memory_function_names = {"lookup_caller", "save_caller_memory"}
+        if name in memory_function_names and (
+            not active_caller_id or arguments.get("user_id") != active_caller_id
+        ):
             return {"error": "Memory functions may only access the active caller"}
         if name == "lookup_caller":
             caller = get_user(arguments["user_id"])
@@ -60,6 +83,10 @@ def _run_tool(
                 consent=arguments.get("consent", False),
             )
             return {"saved": True, "caller": caller}
+        if name == "get_live_exchange_rate":
+            return get_live_exchange_rate(
+                arguments.get("base_currency", ""), arguments.get("quote_currency", "")
+            )
         return {"error": "Unknown memory function"}
     except (KeyError, PermissionError, ValueError) as error:
         return {"saved": False, "error": str(error)}
@@ -79,7 +106,7 @@ def get_ai_response(messages: list[dict[str, str]], caller_id: str | None = None
     contents: list[Any] = [_prompt_from_messages(messages, caller_id)]
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_PROMPT,
-        tools=[MEMORY_TOOLS],
+        tools=[AGENT_TOOLS],
         temperature=0.3,
     )
 
