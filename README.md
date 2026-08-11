@@ -81,6 +81,33 @@ Failure handling is visible in the conversation: transcription failures, Gemini/
 
 Try: **“What are the eligibility rules for PMSBY?”** To test the local-data failure path, temporarily rename `backend/app/data/government_schemes.json`; the assistant should say that the local scheme information is unavailable rather than inventing an answer.
 
+### Day 6 – Outbound scheme-deadline reminder
+
+ArthMitra can now make an outbound reminder call to someone who was already found eligible for a government scheme. The call opens with who is calling, why, and an immediate opt-out: **“Hello, this is ArthMitra, a financial guidance assistant calling because [scheme] has an approaching application deadline of [date]. To stop future reminder calls, say stop or press 9.”**
+
+Twilio dials the phone number and posts call events to FastAPI. The call uses speech/DTMF gathering, Gemini for the short follow-up, and Murf audio where available (with Twilio TTS as a fallback). Saying **stop**, **opt out**, **unsubscribe**, **do not call**, or pressing **9** writes a durable do-not-call record; later call attempts to that number are rejected.
+
+Configure `backend/.env` from `backend/.env.example`:
+
+```env
+TWILIO_ACCOUNT_SID=...
+TWILIO_AUTH_TOKEN=...
+TWILIO_PHONE_NUMBER=+1...
+PUBLIC_BASE_URL=https://your-public-https-url
+OUTBOUND_API_KEY=choose-a-long-secret
+```
+
+`PUBLIC_BASE_URL` must be public HTTPS URL Twilio can reach (a deployed backend or temporary HTTPS tunnel). Start the API, then place one controlled test call:
+
+```bash
+curl -X POST http://127.0.0.1:8000/outbound/call \
+  -H "Content-Type: application/json" \
+  -H "X-Outbound-Api-Key: your-secret" \
+  -d '{"to_number":"+919876543210","scheme_name":"Pradhan Mantri Suraksha Bima Yojana","deadline":"31 August 2026"}'
+```
+
+Use only a number you control while recording the demonstration. The response contains the Twilio Call SID, which you can track in the Twilio Console.
+
 ## Current architecture
 
 ```text

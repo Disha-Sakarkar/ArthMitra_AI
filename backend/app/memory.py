@@ -48,6 +48,14 @@ def init_db() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS outbound_opt_outs (
+                phone_number TEXT PRIMARY KEY,
+                opted_out_at TEXT NOT NULL
+            )
+            """
+        )
         connection.commit()
     finally:
         connection.close()
@@ -137,3 +145,28 @@ def save_user(
         connection.close()
 
     return get_user(user_id) or {}
+
+
+def record_outbound_opt_out(phone_number: str) -> None:
+    """Keep the minimum necessary do-not-call record for scheme reminders."""
+    init_db()
+    connection = get_db()
+    try:
+        connection.execute(
+            "INSERT OR REPLACE INTO outbound_opt_outs (phone_number, opted_out_at) VALUES (?, ?)",
+            (phone_number, datetime.now(UTC).isoformat()),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def is_outbound_opted_out(phone_number: str) -> bool:
+    init_db()
+    connection = get_db()
+    try:
+        return connection.execute(
+            "SELECT 1 FROM outbound_opt_outs WHERE phone_number = ?", (phone_number,)
+        ).fetchone() is not None
+    finally:
+        connection.close()

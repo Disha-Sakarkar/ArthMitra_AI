@@ -149,3 +149,28 @@ def get_ai_response(messages: list[dict[str, str]], caller_id: str | None = None
         return "I am sorry, I could not complete that request right now."
     except Exception:
         return TEMPORARY_UNAVAILABLE_RESPONSE
+
+
+def get_outbound_scheme_response(
+    caller_speech: str, scheme_name: str, deadline: str, eligibility_note: str
+) -> str:
+    """Respond to a reminder call without accessing or storing caller memory."""
+    prompt = f"""You are ArthMitra on an outbound scheme-deadline reminder call.
+Scheme: {scheme_name}
+Deadline: {deadline}
+Eligibility context: {eligibility_note}
+Caller said: {caller_speech or '[no speech detected]'}
+
+Reply in at most two short, warm sentences. State only the supplied scheme and deadline.
+Never ask for or disclose personal, account, Aadhaar, PAN, OTP, PIN, card, or bank details.
+If they decline, ask to stop, say wrong person, or ask for a human, acknowledge it and end.
+Do not claim an application is approved. Offer the official scheme portal or a nearby authorised help centre for the next step."""
+    try:
+        response = client.models.generate_content(
+            model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.2),
+        )
+        return response.text or "The application deadline is approaching. You can confirm the next step on the official scheme portal."
+    except Exception:
+        return "The application deadline is approaching. Please check the official scheme portal for the next step."

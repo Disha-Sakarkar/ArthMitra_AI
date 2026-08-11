@@ -5,10 +5,12 @@ from app.services.conversation_manager import ConversationManager
 from app.services.deepgram_service import transcribe
 from app.services.gemini_service import TEMPORARY_UNAVAILABLE_RESPONSE, get_ai_response
 from app.services.murf_service import generate_audio
+from app.routes.outbound import router as outbound_router
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 app = FastAPI(title="ArthMitra AI")
+app.include_router(outbound_router)
 
 
 @app.on_event("startup")
