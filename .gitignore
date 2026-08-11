@@ -12,3 +12,4 @@ backend/*.db
 backend/env.txt
 backend/ngrok.exe
 *.env
+backend/env
