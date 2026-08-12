@@ -1,9 +1,11 @@
 import json
 import os
+import re
 from typing import Any
 
 from app.memory import get_user, save_user
 from app.prompts.system_prompt import SYSTEM_PROMPT
+from app.services.escalation_service import create_escalation
 from app.services.exchange_rate_service import get_live_exchange_rate
 from app.services.scheme_service import lookup_government_scheme
 from dotenv import load_dotenv
@@ -79,12 +81,79 @@ AGENT_TOOLS = types.Tool(
                 required=["base_currency", "quote_currency"],
             ),
         ),
+        types.FunctionDeclaration(
+            name="create_escalation",
+            description=(
+                "Create a local human-help request ONLY after the caller explicitly agrees to share "
+                "the short summary. Use only when the caller reports suspected fraud or needs a "
+                "decision ArthMitra cannot make. Never include a transcript, OTP, PIN, password, "
+                "account/card number, Aadhaar, PAN, CVV, or any credential."
+            ),
+            parameters=types.Schema(
+                type="OBJECT",
+                properties={
+                    "caller_id": types.Schema(type="STRING"),
+                    "caller_name": types.Schema(type="STRING"),
+                    "reason": types.Schema(type="STRING", description="suspected_fraud or decision_required"),
+                    "what_happened": types.Schema(type="STRING"),
+                    "checks_completed": types.Schema(type="STRING"),
+                    "urgency": types.Schema(type="STRING", description="low, medium, high, or critical"),
+                    "language": types.Schema(type="STRING"),
+                    "follow_up_method": types.Schema(type="STRING"),
+                    "consent": types.Schema(type="BOOLEAN"),
+                },
+                required=["caller_id", "reason", "what_happened", "checks_completed", "urgency", "language", "follow_up_method", "consent"],
+            ),
+        ),
     ]
 )
 
 
+# ✅ FIXED: Matches affirmative keywords within full user responses
+AFFIRMATIVE_CONSENT = re.compile(
+    r"\b(?:yes|yeah|yep|ok|okay|agree|i agree|please do|haan|han|ha|ji|"
+    r"हाँ|हां|जी|अनुमति|परमिशन)\b",
+    re.IGNORECASE,
+)
+
+
+def _has_escalation_consent(messages: list[dict[str, str]] | None) -> bool:
+    """Verify that the latest caller turn approves a prior summary-sharing request."""
+    if not messages or messages[-1].get("role") != "user":
+        return False
+
+    user_text = messages[-1].get("content", "").lower()
+    # Check for affirmative words (substring match)
+    affirmative_words = {
+        "yes", "yeah", "yep", "ok", "okay", "agree", "i agree", "please do",
+        "haan", "han", "ha", "ji",
+        "हाँ", "हां", "जी", "अनुमति", "परमिशन"
+    }
+    if not any(word in user_text for word in affirmative_words):
+        return False
+
+    # Find the immediately preceding assistant message
+    for msg in reversed(messages[:-1]):
+        if msg.get("role") == "assistant":
+            assistant_text = msg.get("content", "").lower()
+            # Check for any permission/consent related words
+            permission_words = {
+                "permission", "consent", "share", "summary", "escalate",
+                "team", "representative", "human", "support", "agent",
+                "allow", "approval",
+                "अनुमति", "स्वीकृति", "दर्ज", "साझा", "टीम", "मानव", "विशेषज्ञ"
+            }
+            if any(word in assistant_text for word in permission_words):
+                return True
+            break  # only check the immediate previous assistant message
+    return False
+
+
 def _run_tool(
-    name: str, arguments: dict[str, Any], active_caller_id: str | None
+    name: str,
+    arguments: dict[str, Any],
+    active_caller_id: str | None,
+    messages: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     try:
         memory_function_names = {"lookup_caller", "save_caller_memory"}
@@ -110,6 +179,13 @@ def _run_tool(
             )
         if name == "lookup_government_scheme":
             return lookup_government_scheme(arguments.get("scheme_query", ""))
+        if name == "create_escalation":
+            if not _has_escalation_consent(messages):
+                return {
+                    "created": "false",
+                    "error": "The caller has not explicitly approved a prior human-summary sharing request",
+                }
+            return create_escalation(active_caller_id=active_caller_id, arguments=arguments)
         return {"error": "Unknown memory function"}
     except (KeyError, PermissionError, ValueError) as error:
         return {"saved": False, "error": str(error)}
@@ -144,7 +220,7 @@ def get_ai_response(messages: list[dict[str, str]], caller_id: str | None = None
                 return response.text or "I am sorry, I could not prepare a response."
             contents.append(response.candidates[0].content)
             for call in function_calls:
-                result = _run_tool(call.name, dict(call.args or {}), caller_id)
+                result = _run_tool(call.name, dict(call.args or {}), caller_id, messages)
                 contents.append(types.Content(role="tool", parts=[types.Part.from_function_response(name=call.name, response={"result": result})]))
         return "I am sorry, I could not complete that request right now."
     except Exception:

@@ -1,12 +1,14 @@
 import json
+from html import escape
 
-from app.memory import init_db
+from app.memory import get_open_escalations, init_db
+from app.routes.outbound import router as outbound_router
 from app.services.conversation_manager import ConversationManager
 from app.services.deepgram_service import transcribe
 from app.services.gemini_service import TEMPORARY_UNAVAILABLE_RESPONSE, get_ai_response
 from app.services.murf_service import generate_audio
-from app.routes.outbound import router as outbound_router
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 app = FastAPI(title="ArthMitra AI")
@@ -27,6 +29,37 @@ def home():
     return {
         "message": "ArthMitra AI Backend Running"
     }
+
+
+@app.get("/api/escalations")
+def open_escalations():
+    """Real local queue for staff or a lightweight help desk integration."""
+    return {"requests": get_open_escalations()}
+
+
+@app.get("/escalations", response_class=HTMLResponse)
+def escalation_dashboard():
+    """Small operator dashboard showing only the safe summaries awaiting review."""
+    rows = get_open_escalations()
+    headers = [
+        "Reference", "Caller", "Reason", "What happened", "Checked", "Urgency",
+        "Language", "Follow-up", "Created",
+    ]
+    rendered_rows = "".join(
+        "<tr>" + "".join(
+            f"<td>{escape(str(row.get(key, '')))}</td>"
+            for key in (
+                "reference_id", "caller_name", "reason", "what_happened", "checks_completed",
+                "urgency", "language", "follow_up_method", "created_at",
+            )
+        ) + "</tr>"
+        for row in rows
+    ) or "<tr><td colspan='9'>No open human-help requests.</td></tr>"
+    table_headers = "".join(f"<th>{escape(header)}</th>" for header in headers)
+    return f"""<!doctype html><html><head><title>ArthMitra help requests</title>
+    <style>body{{font-family:system-ui;margin:2rem;color:#162a23}}table{{border-collapse:collapse;width:100%}}th,td{{border:1px solid #cbd5d1;padding:.65rem;text-align:left;vertical-align:top}}th{{background:#e8f3ed}}</style>
+    </head><body><h1>Open human-help requests</h1><p>Privacy-filtered summaries only.</p>
+    <table><thead><tr>{table_headers}</tr></thead><tbody>{rendered_rows}</tbody></table></body></html>"""
 
 
 @app.post("/chat")

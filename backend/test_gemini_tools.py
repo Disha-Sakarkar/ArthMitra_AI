@@ -21,6 +21,16 @@ class GeminiToolDispatchTests(unittest.TestCase):
         self.assertEqual(result["rate"], 87.5)
         mock_rate.assert_called_once_with("USD", "INR")
 
+    def test_escalation_is_blocked_without_a_prior_permission_request(self):
+        result = _run_tool(
+            "create_escalation",
+            {"caller_id": "caller-1", "consent": True},
+            active_caller_id="caller-1",
+            messages=[{"role": "user", "content": "yes"}],
+        )
+
+        self.assertEqual(result["created"], "false")
+
 
 if __name__ == "__main__":
     unittest.main()

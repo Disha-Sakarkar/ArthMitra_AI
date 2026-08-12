@@ -137,7 +137,7 @@ export default function VoiceButton({
 
                 }
 
-            }, 5000);
+            }, 7000);
 
 
         } catch (error) {

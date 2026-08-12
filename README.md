@@ -108,6 +108,19 @@ curl -X POST http://127.0.0.1:8000/outbound/call \
 
 Use only a number you control while recording the demonstration. The response contains the Twilio Call SID, which you can track in the Twilio Console.
 
+### Day 7 – Human help with privacy and consent
+
+ArthMitra now escalates only two kinds of browser-agent conversations: a caller reporting possible fraud, and a caller who needs an approval or account-specific decision ArthMitra cannot make. Normal scheme, literacy, and exchange-rate questions stay with the agent.
+
+Before it creates a request, ArthMitra explains that it will share only a short summary (caller name if known, what happened, checks already completed, urgency, language, and preferred follow-up method) and asks for explicit permission. A refusal never creates a request. The backend rejects summaries containing credentials or sensitive identifiers, including OTPs, PINs, passwords, account/card numbers, Aadhaar, PAN, CVV, and IFSC.
+
+Approved requests are stored in the local SQLite help queue with a generated `ESC-...` reference ID. The agent gives this ID to the caller and honestly says that a human will review the request and use the requested follow-up method, without promising an immediate response. View the real local dashboard at [http://127.0.0.1:8000/escalations](http://127.0.0.1:8000/escalations), or consume the queue as JSON at `/api/escalations`.
+
+Test paths:
+
+- Escalation: say that you saw an unfamiliar transaction or need a decision the agent cannot make; approve the requested summary sharing; confirm a reference ID is returned and appears in the dashboard.
+- Normal: ask about PMSBY eligibility or financial literacy; confirm that no request is created.
+
 ## Current architecture
 
 ```text

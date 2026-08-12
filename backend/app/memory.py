@@ -26,6 +26,7 @@ SENSITIVE_KEY_WORDS = {
     "pin",
 }
 LONG_NUMBER = re.compile(r"\d[\d -]{6,}\d")
+ESCALATION_REFERENCE = re.compile(r"^ESC-[A-Z0-9]{12}$")
 
 
 def get_db() -> sqlite3.Connection:
@@ -45,6 +46,23 @@ def init_db() -> None:
                 language_preference TEXT NOT NULL DEFAULT 'en',
                 facts TEXT NOT NULL DEFAULT '{}',
                 last_interaction TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS escalations (
+                reference_id TEXT PRIMARY KEY,
+                caller_id TEXT NOT NULL,
+                caller_name TEXT NOT NULL DEFAULT '',
+                reason TEXT NOT NULL,
+                what_happened TEXT NOT NULL,
+                checks_completed TEXT NOT NULL,
+                urgency TEXT NOT NULL,
+                language TEXT NOT NULL,
+                follow_up_method TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                created_at TEXT NOT NULL
             )
             """
         )
@@ -168,5 +186,74 @@ def is_outbound_opted_out(phone_number: str) -> bool:
         return connection.execute(
             "SELECT 1 FROM outbound_opt_outs WHERE phone_number = ?", (phone_number,)
         ).fetchone() is not None
+    finally:
+        connection.close()
+
+
+def contains_sensitive_data(value: Any) -> bool:
+    """Public validation helper for narrowly scoped records such as escalations."""
+    return _contains_sensitive_data(value)
+
+
+def create_escalation_record(
+    *,
+    reference_id: str,
+    caller_id: str,
+    caller_name: str,
+    reason: str,
+    what_happened: str,
+    checks_completed: str,
+    urgency: str,
+    language: str,
+    follow_up_method: str,
+) -> dict[str, str]:
+    """Store the minimum privacy-filtered information needed for human follow-up."""
+    if not ESCALATION_REFERENCE.fullmatch(reference_id):
+        raise ValueError("Invalid escalation reference")
+
+    record = {
+        "caller_name": caller_name,
+        "reason": reason,
+        "what_happened": what_happened,
+        "checks_completed": checks_completed,
+        "urgency": urgency,
+        "language": language,
+        "follow_up_method": follow_up_method,
+    }
+    if _contains_sensitive_data(record):
+        raise ValueError("Sensitive data cannot be included in an escalation")
+
+    created_at = datetime.now(UTC).isoformat()
+    connection = get_db()
+    try:
+        connection.execute(
+            """
+            INSERT INTO escalations (
+                reference_id, caller_id, caller_name, reason, what_happened,
+                checks_completed, urgency, language, follow_up_method, status, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
+            """,
+            (
+                reference_id, caller_id, caller_name, reason, what_happened,
+                checks_completed, urgency, language, follow_up_method, created_at,
+            ),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    return {"reference_id": reference_id, "status": "open", "created_at": created_at}
+
+
+def get_open_escalations() -> list[dict[str, str]]:
+    init_db()
+    connection = get_db()
+    try:
+        rows = connection.execute(
+            """SELECT reference_id, caller_name, reason, what_happened, checks_completed,
+                      urgency, language, follow_up_method, status, created_at
+               FROM escalations WHERE status = 'open' ORDER BY created_at DESC"""
+        ).fetchall()
+        return [dict(row) for row in rows]
     finally:
         connection.close()
