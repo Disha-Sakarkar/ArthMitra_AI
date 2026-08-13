@@ -121,31 +121,13 @@ Test paths:
 - Escalation: say that you saw an unfamiliar transaction or need a decision the agent cannot make; approve the requested summary sharing; confirm a reference ID is returned and appears in the dashboard.
 - Normal: ask about PMSBY eligibility or financial literacy; confirm that no request is created.
 
-## Day 8 – Build a Call Analytics Dashboard
+### Day 8 – Call analytics dashboard
 
- a dedicated Call Analytics Dashboard was implemented to track real-time agent performance, record call outcomes, and ensure privacy-safe telemetry monitoring.
+ArthMitra records a privacy-safe outcome for every completed browser voice call. A call is **successful** when the caller receives a scheme document list or an eligibility answer; an ended call that did not reach either outcome is **failed**. The record contains only the channel, timestamps, outcome, and completion category—never a caller ID, transcript, credentials, or account details.
 
-### Key Requirements Implemented
+Open [http://127.0.0.1:8000/analytics](http://127.0.0.1:8000/analytics) to see real aggregate **Total calls**, **Successful calls**, and **Failed calls**. The same aggregate data is available at `/api/call-analytics`.
 
-1. **Success Condition Definition**
-   - Defined clear success criteria based on the track objectives:
-     - **Success:** The caller receives an eligibility answer or a scheme document list.
-     - **Failure:** The call ends before reaching either success condition (e.g., user hangs up early or abandons inquiry).
-
-2. **Call Outcome Tracking**
-   - Captured call duration, status, and outcome upon every call completion.
-   - Saved call metadata directly to the database without hardcoded values.
-
-3. **Core Dashboard Metrics**
-   - **Total Calls:** Aggregated count of all completed calls.
-   - **Successful Calls:** Count of calls meeting the defined success condition.
-   - **Failed Calls:** Count of calls ending before reaching the success condition.
-
-4. **Real Data Integration**
-   - Connected the dashboard directly to backend API endpoints receiving live browser/SIP call metrics.
-
-5. **Caller Privacy & Security**
-   - Strictly enforced data privacy rules—no passwords, OTPs, PINs, account details, or full conversation transcripts are stored or rendered on the dashboard.
+To exercise the success path, start a browser voice call and ask a named-scheme document question, for example: **“What documents do I need for PMSBY?”** End the call after ArthMitra answers; total and successful calls will each increase by one.
 
 ## Current architecture
 
@@ -246,22 +228,6 @@ Persistent memory is opt-in. The implementation stores only a narrow, approved s
 - This produces an end-to-end baseline latency of roughly 10–12 seconds after the user stops speaking.
 - Caller memory is local to the current backend’s SQLite database and is not yet accompanied by a user-facing memory-management or deletion screen.
 - Scheme guidance should be verified against official sources when users need current eligibility or policy details.
-
-### Day 8 – Call analytics dashboard
-
-ArthMitra records a privacy-safe outcome for every completed browser voice call. A call is **successful** when the caller receives a scheme document list or an eligibility answer; an ended call that did not reach either outcome is **failed**. The record contains only the channel, timestamps, outcome, and completion category—never a caller ID, transcript, credentials, or account details.
-
-Open [http://127.0.0.1:8000/analytics](http://127.0.0.1:8000/analytics) to see real aggregate **Total calls**, **Successful calls**, and **Failed calls**. The same aggregate data is available at `/api/call-analytics`.
-
-To exercise the success path, start a browser voice call and ask a named-scheme document question, for example: **“What documents do I need for PMSBY?”** End the call after ArthMitra answers; total and successful calls will each increase by one.
-
-## Next steps
-
-- Stream speech-to-text and Murf Falcon audio to reduce perceived latency.
-- Improve multilingual voice quality and language detection.
-- Add official scheme-information workflows and source-backed responses.
-- Add caller-facing controls to view, update, or delete saved memory.
-- Deploy the voice experience for broader access.
 
 ## Vision
 
