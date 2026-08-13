@@ -36,6 +36,15 @@ class CallAnalyticsTests(unittest.TestCase):
         self.assertEqual(memory.get_call_analytics()["failed_calls"], 1)
         self.assertEqual(memory.get_call_analytics()["failure_reasons"]["incomplete"], 1)
 
+    def test_success_cannot_be_overwritten_when_the_caller_ends_the_call(self):
+        call_id = memory.start_call("browser")
+        memory.finish_call(call_id, successful=True)
+        memory.finish_call(call_id, successful=False, failure_reason="incomplete")
+
+        analytics = memory.get_call_analytics()
+        self.assertEqual(analytics["successful_calls"], 1)
+        self.assertEqual(analytics["failed_calls"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

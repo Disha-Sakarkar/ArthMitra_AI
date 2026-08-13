@@ -241,6 +241,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif _is_eligibility_request(transcript) and _has_eligibility_answer(reply):
                     completion_kind = "eligibility_check"
 
+                # A visible, non-error agent response completes the request right
+                # away. The later disconnect cannot overwrite this final outcome.
+                if reply != TEMPORARY_UNAVAILABLE_RESPONSE:
+                    finish_call(
+                        call_id,
+                        successful=True,
+                        completion_kind=completion_kind,
+                    )
+
                 await send_assistant_reply(
                     websocket,
                     reply,

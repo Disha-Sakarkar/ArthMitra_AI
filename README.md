@@ -121,6 +121,32 @@ Test paths:
 - Escalation: say that you saw an unfamiliar transaction or need a decision the agent cannot make; approve the requested summary sharing; confirm a reference ID is returned and appears in the dashboard.
 - Normal: ask about PMSBY eligibility or financial literacy; confirm that no request is created.
 
+## Day 8 – Build a Call Analytics Dashboard
+
+ a dedicated Call Analytics Dashboard was implemented to track real-time agent performance, record call outcomes, and ensure privacy-safe telemetry monitoring.
+
+### Key Requirements Implemented
+
+1. **Success Condition Definition**
+   - Defined clear success criteria based on the track objectives:
+     - **Success:** The caller receives an eligibility answer or a scheme document list.
+     - **Failure:** The call ends before reaching either success condition (e.g., user hangs up early or abandons inquiry).
+
+2. **Call Outcome Tracking**
+   - Captured call duration, status, and outcome upon every call completion.
+   - Saved call metadata directly to the database without hardcoded values.
+
+3. **Core Dashboard Metrics**
+   - **Total Calls:** Aggregated count of all completed calls.
+   - **Successful Calls:** Count of calls meeting the defined success condition.
+   - **Failed Calls:** Count of calls ending before reaching the success condition.
+
+4. **Real Data Integration**
+   - Connected the dashboard directly to backend API endpoints receiving live browser/SIP call metrics.
+
+5. **Caller Privacy & Security**
+   - Strictly enforced data privacy rules—no passwords, OTPs, PINs, account details, or full conversation transcripts are stored or rendered on the dashboard.
+
 ## Current architecture
 
 ```text
