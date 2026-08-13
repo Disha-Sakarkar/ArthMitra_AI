@@ -3,6 +3,7 @@
 import json
 import re
 import sqlite3
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -74,6 +75,22 @@ def init_db() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS call_outcomes (
+                call_id TEXT PRIMARY KEY,
+                channel TEXT NOT NULL CHECK(channel IN ('browser', 'sip')),
+                started_at TEXT NOT NULL,
+                ended_at TEXT,
+                outcome TEXT CHECK(outcome IN ('successful', 'failed')),
+                completion_kind TEXT CHECK(completion_kind IN ('eligibility_check', 'document_list')),
+                failure_reason TEXT CHECK(failure_reason IN ('no_response', 'incomplete'))
+            )
+            """
+        )
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(call_outcomes)")}
+        if "failure_reason" not in columns:
+            connection.execute("ALTER TABLE call_outcomes ADD COLUMN failure_reason TEXT")
         connection.commit()
     finally:
         connection.close()
@@ -186,6 +203,90 @@ def is_outbound_opted_out(phone_number: str) -> bool:
         return connection.execute(
             "SELECT 1 FROM outbound_opt_outs WHERE phone_number = ?", (phone_number,)
         ).fetchone() is not None
+    finally:
+        connection.close()
+
+
+def start_call(channel: str, call_id: str | None = None) -> str:
+    """Create a privacy-safe call record with no caller identity or transcript."""
+    if channel not in {"browser", "sip"}:
+        raise ValueError("Unsupported call channel")
+    call_id = call_id or str(uuid.uuid4())
+    init_db()
+    connection = get_db()
+    try:
+        connection.execute(
+            "INSERT OR IGNORE INTO call_outcomes (call_id, channel, started_at) VALUES (?, ?, ?)",
+            (call_id, channel, datetime.now(UTC).isoformat()),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    return call_id
+
+
+def finish_call(call_id: str, successful: bool = False, completion_kind: str | None = None,
+                failure_reason: str | None = None) -> None:
+    """Finalize once; a disconnected or incomplete call is a failed call."""
+    if completion_kind not in {None, "eligibility_check", "document_list"}:
+        raise ValueError("Unsupported completion kind")
+    if failure_reason not in {None, "no_response", "incomplete"}:
+        raise ValueError("Unsupported failure reason")
+    if successful:
+        failure_reason = None
+    init_db()
+    connection = get_db()
+    try:
+        connection.execute(
+            """UPDATE call_outcomes
+               SET ended_at = ?, outcome = ?, completion_kind = ?, failure_reason = ?
+               WHERE call_id = ? AND ended_at IS NULL""",
+            (datetime.now(UTC).isoformat(), "successful" if successful else "failed",
+             completion_kind if successful else None,
+             failure_reason or (None if successful else "incomplete"), call_id),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def get_call_analytics() -> dict[str, Any]:
+    """Return aggregate and privacy-safe per-call analytics for the dashboard."""
+    init_db()
+    connection = get_db()
+    try:
+        row = connection.execute(
+            """SELECT COUNT(*) AS total_calls,
+                      COALESCE(SUM(outcome = 'successful'), 0) AS successful_calls,
+                      COALESCE(SUM(outcome = 'failed'), 0) AS failed_calls,
+                      COALESCE(AVG((julianday(ended_at) - julianday(started_at)) * 86400), 0) AS average_duration_seconds
+               FROM call_outcomes WHERE ended_at IS NOT NULL"""
+        ).fetchone()
+        totals = {key: int(row[key]) for key in ("total_calls", "successful_calls", "failed_calls")}
+        total_calls = totals["total_calls"]
+        channel_rows = connection.execute(
+            """SELECT channel, COUNT(*) AS total_calls,
+                      COALESCE(SUM(outcome = 'successful'), 0) AS successful_calls
+               FROM call_outcomes WHERE ended_at IS NOT NULL GROUP BY channel"""
+        ).fetchall()
+        failure_rows = connection.execute(
+            """SELECT failure_reason, COUNT(*) AS count FROM call_outcomes
+               WHERE outcome = 'failed' GROUP BY failure_reason"""
+        ).fetchall()
+        recent_rows = connection.execute(
+            """SELECT started_at, channel, outcome, completion_kind, failure_reason,
+                      ROUND((julianday(ended_at) - julianday(started_at)) * 86400) AS duration_seconds
+               FROM call_outcomes WHERE ended_at IS NOT NULL
+               ORDER BY ended_at DESC LIMIT 10"""
+        ).fetchall()
+        return {
+            **totals,
+            "success_rate": round(totals["successful_calls"] / total_calls * 100, 1) if total_calls else 0,
+            "average_duration_seconds": round(float(row["average_duration_seconds"])),
+            "channels": [dict(item) for item in channel_rows],
+            "failure_reasons": {item["failure_reason"] or "incomplete": int(item["count"]) for item in failure_rows},
+            "recent_calls": [dict(item) for item in recent_rows],
+        }
     finally:
         connection.close()
 

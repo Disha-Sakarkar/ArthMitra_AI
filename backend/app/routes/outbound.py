@@ -6,14 +6,8 @@ import os
 from typing import Annotated
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
-from fastapi.responses import Response
-from pydantic import BaseModel, Field
-from twilio.request_validator import RequestValidator
-from twilio.twiml.voice_response import Gather, VoiceResponse
-
-from app.services.gemini_service import get_outbound_scheme_response
 from app.memory import record_outbound_opt_out
+from app.services.gemini_service import get_outbound_scheme_response
 from app.services.murf_service import generate_audio
 from app.services.outbound_call_service import (
     SchemeReminder,
@@ -21,6 +15,11 @@ from app.services.outbound_call_service import (
     is_valid_phone_number,
     validate_reminder,
 )
+from fastapi import APIRouter, Header, HTTPException, Request, status
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
+from twilio.request_validator import RequestValidator
+from twilio.twiml.voice_response import Gather, VoiceResponse
 
 router = APIRouter(tags=["outbound-calls"])
 

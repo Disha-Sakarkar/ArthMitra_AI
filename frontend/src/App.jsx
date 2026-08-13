@@ -4,6 +4,7 @@ import Header from "./components/Header";
 import StatusBadge from "./components/StatusBadge";
 import ChatBubble from "./components/ChatBubble";
 import VoiceButton from "./components/VoiceButton";
+import AnalyticsDashboard from "./components/AnalyticsDashboard";
 
 import {
     connectSocket,
@@ -22,6 +23,7 @@ function App() {
     const [errorMessage, setErrorMessage] = useState("");
 
     const [callActive, setCallActive] = useState(false);
+    const [showAnalytics, setShowAnalytics] = useState(false);
 
     const callerId = (() => {
         const storedId = localStorage.getItem("arthmitra_caller_id");
@@ -173,6 +175,10 @@ function App() {
 
     };
 
+
+    if (showAnalytics) {
+        return <AnalyticsDashboard onBack={() => setShowAnalytics(false)} />;
+    }
 
     return (
 
@@ -614,7 +620,15 @@ function App() {
                         </div>
 
 
-                        <StatusBadge status={status} />
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setShowAnalytics(true)}
+                                className="rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
+                            >
+                                Call analytics
+                            </button>
+                            <StatusBadge status={status} />
+                        </div>
 
                     </div>
 
