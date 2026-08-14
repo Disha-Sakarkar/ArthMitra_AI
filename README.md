@@ -255,6 +255,20 @@ Open [http://127.0.0.1:8000/analytics](http://127.0.0.1:8000/analytics) to see r
 
 To exercise the success path, start a browser voice call and ask a named-scheme document question, for example: **“What documents do I need for PMSBY?”** End the call after ArthMitra answers; total and successful calls will each increase by one.
 
+### Day 9 – Government-scheme specialist handoff
+
+ArthMitra now has two distinct agents:
+
+- **Main ArthMitra agent:** general financial literacy, banking, digital payments, exchange rates, and fraud awareness.
+- **Government Scheme Specialist:** only named Indian central-government scheme eligibility, benefits, documents, enrolment, ministries, and official portals.
+
+The main agent has a `transfer_to_government_scheme_specialist` tool. Its description limits use to a named scheme (for example, PMSBY, PMJDY, PMJJBY, APY, or PMMY) and explicitly excludes general financial questions. When Gemini selects the tool, the backend copies the entire current conversation to the specialist, sets that specialist as the active agent for later turns, and replies: **“I will connect you to our government schemes specialist. Government Schemes Specialist here.”** The specialist then answers the original request using the local scheme dataset, without asking the caller to repeat it.
+
+Test both paths after starting the backend and frontend:
+
+- Normal/main-agent path: ask **“What is the difference between a debit card and a credit card?”** It should be answered by ArthMitra without a handoff.
+- Specialist path: ask **“What documents do I need for PMSBY?”** ArthMitra should announce the handoff, then the Government Schemes Specialist should continue that exact request and use the scheme lookup.
+
 ## Next steps
 
 - Stream speech-to-text and Murf Falcon audio to reduce perceived latency.

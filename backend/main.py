@@ -11,7 +11,7 @@ from app.memory import (
 from app.routes.outbound import router as outbound_router
 from app.services.conversation_manager import ConversationManager
 from app.services.deepgram_service import transcribe
-from app.services.gemini_service import TEMPORARY_UNAVAILABLE_RESPONSE, get_ai_response
+from app.services.gemini_service import TEMPORARY_UNAVAILABLE_RESPONSE, get_agent_response
 from app.services.murf_service import generate_audio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,10 +113,12 @@ def escalation_dashboard():
 
 @app.post("/chat")
 def chat(data: ChatRequest):
-    reply = get_ai_response([{"role": "user", "content": data.message}])
+    reply = get_agent_response([{"role": "user", "content": data.message}])
 
     return {
-        "reply": reply
+        "reply": reply.text,
+        "active_agent": reply.active_agent,
+        "handed_off": reply.handed_off,
     }
 
 
@@ -154,6 +156,7 @@ async def websocket_endpoint(websocket: WebSocket):
     call_id = start_call("browser")
     completion_kind = None
     caller_turns = 0
+    active_agent = "main"
 
     try:
 
@@ -185,7 +188,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 if data.get("type") == "session_init" and data.get("user_id"):
                     caller_id = str(data["user_id"])
                     conversation.add_user_message("A new voice call has started. Greet the caller.")
-                    greeting = get_ai_response(conversation.get_messages(), caller_id)
+                    agent_reply = get_agent_response(conversation.get_messages(), caller_id, active_agent)
+                    greeting = agent_reply.text
+                    active_agent = agent_reply.active_agent
                     conversation.add_assistant_message(greeting)
                     await send_assistant_reply(
                         websocket,
@@ -230,7 +235,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 # Gemini with history
 
-                reply = get_ai_response(conversation.get_messages(), caller_id)
+                agent_reply = get_agent_response(conversation.get_messages(), caller_id, active_agent)
+                reply = agent_reply.text
+                active_agent = agent_reply.active_agent
 
                 # Store assistant reply
 

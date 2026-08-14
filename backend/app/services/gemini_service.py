@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from app.memory import get_user, save_user
 from app.prompts.system_prompt import SYSTEM_PROMPT
+from app.prompts.government_scheme_specialist import GOVERNMENT_SCHEME_SPECIALIST_PROMPT
 from app.services.escalation_service import create_escalation
 from app.services.exchange_rate_service import get_live_exchange_rate
 from app.services.scheme_service import lookup_government_scheme
@@ -14,14 +17,36 @@ from google.genai import types
 
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+logger = logging.getLogger(__name__)
 
 TEMPORARY_UNAVAILABLE_RESPONSE = (
     "I am sorry, ArthMitra is temporarily unavailable. Please try again in a moment."
 )
 
 
+@dataclass(frozen=True)
+class AgentReply:
+    """A reply plus the agent that should handle the caller's next turn."""
+
+    text: str
+    active_agent: str = "main"
+    handed_off: bool = False
+
+
 AGENT_TOOLS = types.Tool(
     function_declarations=[
+        types.FunctionDeclaration(
+            name="transfer_to_government_scheme_specialist",
+            description=(
+                "Hand the conversation to the Government Scheme Specialist when the caller asks "
+                "about eligibility, benefits, documents, enrolment, ministry, or the official "
+                "portal for a named Indian central-government scheme or abbreviation such as "
+                "PMJDY, PMSBY, PMJJBY, APY, or PMMY. Do not use for general financial education, "
+                "banking, payments, fraud, exchange rates, or unnamed schemes. The specialist "
+                "receives the complete conversation and continues the caller's current request."
+            ),
+            parameters=types.Schema(type="OBJECT", properties={}),
+        ),
         types.FunctionDeclaration(
             name="lookup_caller",
             description="Look up the current caller's consented memory before greeting them or continuing a previous topic.",
@@ -109,6 +134,25 @@ AGENT_TOOLS = types.Tool(
 )
 
 
+SCHEME_SPECIALIST_TOOLS = types.Tool(
+    function_declarations=[
+        types.FunctionDeclaration(
+            name="lookup_government_scheme",
+            description=(
+                "Look up a named Indian central-government scheme in ArthMitra's local curated "
+                "dataset before answering about its eligibility, benefits, documents, enrolment, "
+                "ministry, or official portal. The result includes its as-of date and official portal."
+            ),
+            parameters=types.Schema(
+                type="OBJECT",
+                properties={"scheme_query": types.Schema(type="STRING")},
+                required=["scheme_query"],
+            ),
+        )
+    ]
+)
+
+
 # ✅ FIXED: Matches affirmative keywords within full user responses
 AFFIRMATIVE_CONSENT = re.compile(
     r"\b(?:yes|yeah|yep|ok|okay|agree|i agree|please do|haan|han|ha|ji|"
@@ -156,6 +200,8 @@ def _run_tool(
     messages: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     try:
+        if name == "transfer_to_government_scheme_specialist":
+            return {"transferred": True}
         memory_function_names = {"lookup_caller", "save_caller_memory"}
         if name in memory_function_names and (
             not active_caller_id or arguments.get("user_id") != active_caller_id
@@ -200,31 +246,80 @@ def _prompt_from_messages(messages: list[dict[str, str]], caller_id: str | None)
     return transcript
 
 
-def get_ai_response(messages: list[dict[str, str]], caller_id: str | None = None) -> str:
-    """Generate a response, allowing Gemini to call the consented-memory functions."""
-    try:
-        contents: list[Any] = [_prompt_from_messages(messages, caller_id)]
-        config = types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            tools=[AGENT_TOOLS],
-            temperature=0.3,
+def _handoff_message(specialist_reply: str) -> str:
+    """Make both the transfer and the specialist's arrival audible to the caller."""
+    return (
+        "I will connect you to our government schemes specialist. "
+        f"Government Schemes Specialist here. {specialist_reply}"
+    )
+
+
+def _generate_with_tools(
+    messages: list[dict[str, str]],
+    caller_id: str | None,
+    system_instruction: str,
+    tools: types.Tool,
+    active_agent: str,
+) -> AgentReply:
+    """Generate one agent turn, retaining the full caller transcript for a handoff."""
+    contents: list[Any] = [_prompt_from_messages(messages, caller_id)]
+    config = types.GenerateContentConfig(
+        system_instruction=system_instruction,
+        tools=[tools],
+        temperature=0.3,
+    )
+    for _ in range(4):
+        response = client.models.generate_content(
+            model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
+            contents=contents,
+            config=config,
         )
-        for _ in range(4):
-            response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
-                contents=contents,
-                config=config,
+        function_calls = response.function_calls or []
+        if not function_calls:
+            return AgentReply(response.text or "I am sorry, I could not prepare a response.", active_agent)
+
+        # A transfer tool ends the main agent's turn. The specialist starts with
+        # the exact same transcript, so the caller never has to repeat the ask.
+        if active_agent == "main" and any(
+            call.name == "transfer_to_government_scheme_specialist" for call in function_calls
+        ):
+            specialist = _generate_with_tools(
+                messages,
+                caller_id,
+                GOVERNMENT_SCHEME_SPECIALIST_PROMPT,
+                SCHEME_SPECIALIST_TOOLS,
+                "government_scheme_specialist",
             )
-            function_calls = response.function_calls or []
-            if not function_calls:
-                return response.text or "I am sorry, I could not prepare a response."
-            contents.append(response.candidates[0].content)
-            for call in function_calls:
-                result = _run_tool(call.name, dict(call.args or {}), caller_id, messages)
-                contents.append(types.Content(role="tool", parts=[types.Part.from_function_response(name=call.name, response={"result": result})]))
-        return "I am sorry, I could not complete that request right now."
+            return AgentReply(_handoff_message(specialist.text), specialist.active_agent, True)
+
+        contents.append(response.candidates[0].content)
+        for call in function_calls:
+            result = _run_tool(call.name, dict(call.args or {}), caller_id, messages)
+            contents.append(types.Content(role="tool", parts=[types.Part.from_function_response(name=call.name, response={"result": result})]))
+    return AgentReply("I am sorry, I could not complete that request right now.", active_agent)
+
+
+def get_agent_response(
+    messages: list[dict[str, str]], caller_id: str | None = None, active_agent: str = "main"
+) -> AgentReply:
+    """Route a turn to the main agent or the focused government-scheme specialist."""
+    try:
+        if active_agent == "government_scheme_specialist":
+            return _generate_with_tools(
+                messages, caller_id, GOVERNMENT_SCHEME_SPECIALIST_PROMPT,
+                SCHEME_SPECIALIST_TOOLS, active_agent,
+            )
+        return _generate_with_tools(messages, caller_id, SYSTEM_PROMPT, AGENT_TOOLS, "main")
     except Exception:
-        return TEMPORARY_UNAVAILABLE_RESPONSE
+        # logger.exception includes the original provider error and traceback in
+        # the Uvicorn terminal logs without exposing caller transcript content.
+        logger.exception("Gemini generation failed for active_agent=%s", active_agent)
+        return AgentReply(TEMPORARY_UNAVAILABLE_RESPONSE, active_agent)
+
+
+def get_ai_response(messages: list[dict[str, str]], caller_id: str | None = None) -> str:
+    """Compatibility wrapper for REST callers that need reply text only."""
+    return get_agent_response(messages, caller_id).text
 
 
 def get_outbound_scheme_response(
@@ -249,4 +344,5 @@ Do not claim an application is approved. Offer the official scheme portal or a n
         )
         return response.text or "The application deadline is approaching. You can confirm the next step on the official scheme portal."
     except Exception:
+        logger.exception("Gemini outbound reminder generation failed")
         return "The application deadline is approaching. Please check the official scheme portal for the next step."
