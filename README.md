@@ -102,7 +102,7 @@ It also never asks users for sensitive credentials such as:
 
 For account-specific situations, the assistant directs users toward official bank customer care or their nearest branch.
 
-###Consent-Based Caller Memory
+### Consent-Based Caller Memory
 
 ArthMitra can remember useful, non-sensitive information across browser voice sessions, but memory is **opt-in**.
 
@@ -122,7 +122,7 @@ SQLite
 Approved caller context
 ```
 
-###What can be remembered
+###  What can be remembered
 
 Memory is intentionally limited to useful conversational context such as:
 
@@ -165,7 +165,7 @@ If a scheme is not present in the local dataset, ArthMitra does not invent the i
 
 For example, if a user asks about a scheme that has not been included in the dataset, the assistant can explain that it currently does not have verified information rather than hallucinating an answer.
 
-###Live Exchange Rates
+### Live Exchange Rates
 
 For questions requiring current financial data, ArthMitra uses a Gemini function tool:
 ```
@@ -260,7 +260,7 @@ The queue is also available through:
 /api/escalations
 ```
 
-###Privacy-Safe Call Analytics
+### Privacy-Safe Call Analytics
 
 ArthMitra records the outcome of completed browser voice calls without exposing caller information.
 
@@ -288,7 +288,7 @@ It does ```not``` store:
 - Account details
 - Sensitive financial information
 
-###Analytics dashboard
+### Analytics dashboard
 
 Open:
 ```
@@ -305,7 +305,7 @@ Aggregate analytics are also available through:
 /api/call-analytics
 ```
 
-###Specialist Agent Handoff
+### Specialist Agent Handoff
 
 ArthMitra uses a specialist-agent architecture instead of forcing one agent to handle every type of financial question.
 
@@ -322,7 +322,7 @@ Handles:
 - Fraud awareness
 - General financial guidance
 
-###Government Scheme Specialist
+### Government Scheme Specialist
 
 Handles only:
 - Named government scheme eligibility
@@ -379,7 +379,7 @@ For example, if Murf audio generation fails, the assistant can still return the 
 
 If an external data source is unavailable, ArthMitra explains that the information cannot currently be fetched instead of inventing an answer.
 
-###Architecture
+### Architecture
 ```
                          ┌─────────────────────┐
                          │     React Frontend  │
@@ -432,7 +432,7 @@ If an external data source is unavailable, ArthMitra explains that the informati
                                        ▼
                                  Voice Response
  ```
-###Technology Stack
+### Technology Stack
 Layer	Technology
 Frontend	React, Vite, Tailwind CSS
 Real-time communication	WebSocket
@@ -483,7 +483,7 @@ ArthMitra-AI/
 │
 └── README.md
 ```
-##Running Locally
+### Running Locally
 1. Clone the repository
 ```
 git clone <your-repository-url>
@@ -526,7 +526,7 @@ npm run dev
 ```
 Open the local frontend URL shown by Vite and allow microphone access.
 
-###Testing Caller Memory
+### Testing Caller Memory
 
 From the backend directory:
 ```
@@ -537,7 +537,7 @@ The memory tests cover:
 - Missing consent
 - Sensitive-data rejection
 
-###Testing the Voice Agen
+### Testing the Voice Agen
 After starting the frontend and backend:
 - Allow microphone access.
 - Start a voice session.
@@ -560,7 +560,7 @@ Example questions:
 
 "Can you remember my name?"
 ```
-###Important Environment Variables
+### Important Environment Variables
 Variable	Purpose
 GEMINI_API_KEY	Gemini model access
 DEEPGRAM_API_KEY	Speech-to-text
@@ -574,15 +574,15 @@ EXCHANGE_RATE_URL	Optional exchange-rate source override
 
 Keep all credentials private.
 
-##3Privacy and Security
+### Privacy and Security
 
 Privacy is a core design principle of ArthMitra.
 
-###Caller memory
+### Caller memory
 
 Memory is saved only after explicit user consent.
 
-###Sensitive information
+### Sensitive information
 
 The system is designed to reject sensitive information such as:
 ```
@@ -596,19 +596,19 @@ Aadhaar
 PAN
 IFSC
 ```
-###Analytics
+### Analytics
 
 Analytics are aggregate and privacy-safe. Caller identifiers and conversation transcripts are not displayed on the analytics dashboard.
 
-###Human escalation
+### Human escalation
 
 Escalation summaries are intentionally limited to the information required for a human to understand and follow up on the issue.
 
-O###utbound calls
+### Outbound calls
 
 Outbound calling includes an explicit opt-out mechanism and a durable do-not-call record.
 
-###Design Principles
+### Design Principles
 **1. Voice first**
 
 Financial information should be accessible through conversation, not only through complex interfaces.
@@ -633,7 +633,7 @@ Complex domains are handled through focused specialist agents instead of making 
 
 An AI assistant should know when it has reached the boundary of what it can safely handle.
 
-###Current Limitations
+### Current Limitations
 - Voice recording currently uses a fixed audio window rather than continuous streaming.
 - Gemini and Murf responses are generated before playback rather than being fully streamed.
 - End-to-end response latency can be around 10–12 seconds after the user stops speaking.
@@ -643,7 +643,7 @@ An AI assistant should know when it has reached the boundary of what it can safe
 - Scheme information should be verified against official government sources when current policy or eligibility details are important.
 - Multilingual speech recognition and voice quality can still vary depending on pronunciation, audio quality, and language mixing.
 
-###Future Improvements
+### Future Improvements
 
 Potential next steps include:
 - Continuous streaming speech recognition
@@ -657,7 +657,7 @@ Potential next steps include:
 - Broader telephony support
 - Stronger automated safety and privacy testing
 
-###Vision
+### Vision
 
 ArthMitra AI is built around a simple idea:
 
