@@ -138,7 +138,7 @@ The backend also rejects memory operations that contain sensitive information or
 
 This allows returning users to receive a more personalised experience without turning the system into a repository of financial credentials.
 
-###Government Scheme Intelligence
+### Government Scheme Intelligence
 
 ArthMitra includes a controlled government-scheme lookup tool.
 
@@ -219,7 +219,7 @@ Future outbound attempts to that number are rejected.
 
 For testing, outbound calls should only be made to numbers controlled by the developer or explicitly authorised recipients.
 
-###Human Escalation
+### Human Escalation
 
 ArthMitra does not attempt to solve every financial problem itself.
 
@@ -359,7 +359,7 @@ Specialist:
 ```
 Normal financial questions remain with the main agent.
 
-###Failure Handling
+### Failure Handling
 
 Voice systems depend on multiple external services, so failures are treated as part of the design rather than unexpected exceptions.
 
@@ -433,17 +433,19 @@ If an external data source is unavailable, ArthMitra explains that the informati
                                  Voice Response
  ```
 ### Technology Stack
-Layer	Technology
-Frontend	React, Vite, Tailwind CSS
-Real-time communication	WebSocket
-Backend	Python, FastAPI
-Database	SQLite
-LLM	Google Gemini
-Speech-to-Text	Deepgram
-Text-to-Speech	Murf AI
-Telephony	Twilio
-Live financial data	ExchangeRate-API
-Browser memory	localStorage
+| Layer |	Technology| 
+| --- | --- |  
+| Frontend | React, Vite, Tailwind CSS | 
+| Real-time communication | WebSocket | 
+| Backend | Python, FastAPI | 
+| Database | SQLite | 
+| LLM | Google Gemini | 
+| Speech-to-Text | Deepgram | 
+| Text-to-Speech | Murf AI | 
+| Telephony | Twilio | 
+| Live financial data | ExchangeRate-API | 
+| Browser memory |	localStorage | 
+
 ###Project Structure
 ```
 ArthMitra-AI/
@@ -561,16 +563,17 @@ Example questions:
 "Can you remember my name?"
 ```
 ### Important Environment Variables
-Variable	Purpose
-GEMINI_API_KEY	Gemini model access
-DEEPGRAM_API_KEY	Speech-to-text
-MURF_API_KEY	Text-to-speech
-TWILIO_ACCOUNT_SID	Twilio authentication
-TWILIO_AUTH_TOKEN	Twilio authentication
-TWILIO_PHONE_NUMBER	Outbound caller number
-PUBLIC_BASE_URL	Public HTTPS backend URL for Twilio
-OUTBOUND_API_KEY	Protects outbound-call API
-EXCHANGE_RATE_URL	Optional exchange-rate source override
+| Variable | Purpose | 
+| --- | --- |   
+| GEMINI_API_KEY | Gemini model access | 
+| DEEPGRAM_API_KEY | Speech-to-text | 
+| MURF_API_KEY | Text-to-speech | 
+| TWILIO_ACCOUNT_SID | Twilio authentication | 
+| TWILIO_AUTH_TOKEN | Twilio authentication | 
+| TWILIO_PHONE_NUMBER | Outbound caller number | 
+| PUBLIC_BASE_URL | Public HTTPS backend URL for Twilio | 
+| OUTBOUND_API_KEY | Protects outbound-call API | 
+| EXCHANGE_RATE_URL | Optional exchange-rate source override | 
 
 Keep all credentials private.
 
