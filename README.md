@@ -181,13 +181,13 @@ Each successful result includes the provider's last-updated timestamp.
 
 The assistant also explains that the returned value is a reference market rate and that banks or authorised money changers may provide different customer rates.
 
-###Failure handling
+### Failure handling
 
 The exchange-rate lookup has a five-second timeout.
 
 If the external source is unavailable, ArthMitra does not guess a number. It returns a clear response explaining that the live rate is temporarily unavailable.
 
-###Outbound Calling
+### Outbound Calling
 
 ArthMitra can initiate outbound calls for controlled financial-service use cases such as government-scheme deadline reminders.
 
