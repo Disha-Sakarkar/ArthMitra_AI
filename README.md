@@ -143,7 +143,7 @@ Test both paths after starting the backend and frontend:
 - Normal/main-agent path: ask **“What is the difference between a debit card and a credit card?”** It should be answered by ArthMitra without a handoff.
 - Specialist path: ask **“What documents do I need for PMSBY?”** ArthMitra should announce the handoff, then the Government Schemes Specialist should continue that exact request and use the scheme lookup.
 
-# Day 10 – Share Your Voice Agent Journey
+### Day 10 – Share Your Voice Agent Journey
 
 Today marks the final day of the **Murf AI 10 Days of Voice Agents – VoiceForBharat Edition**.
 
