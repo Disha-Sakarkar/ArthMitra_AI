@@ -52,7 +52,7 @@ The browser communicates with the FastAPI backend through WebSockets so the conv
 
 ArthMitra also maintains the current conversation context so follow-up questions feel like part of the same conversation rather than isolated requests.
 
-###Multilingual Conversations
+### Multilingual Conversations
 
 ArthMitra is designed for Bharat's multilingual environment.
 
@@ -75,7 +75,7 @@ ArthMitra:
 ```
 This is particularly important for a financial assistant because complicated financial terminology can become a barrier when users are more comfortable communicating in their local language.
 
-###Financial Safety Guardrails
+### Financial Safety Guardrails
 
 ArthMitra is an educational financial assistant, not a bank or financial institution.
 
