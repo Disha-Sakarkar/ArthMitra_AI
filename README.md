@@ -2,280 +2,676 @@
 
 > Your AI financial voice assistant for Bharat.
 
-ArthMitra AI is a voice-first financial education assistant built for the **Murf AI – 10 Days of Voice Agents: VoiceForBharat Edition** challenge, Financial Services track. It explains government schemes, banking, digital payments, financial literacy, and fraud awareness in clear, conversational language.
+ArthMitra AI is a voice-first financial education assistant built for the **Murf AI – 10 Days of Voice Agents: VoiceForBharat Edition**, under the **Financial Services** track.
 
-## Challenge progress
+It is designed to make financial information easier to understand through natural voice conversations, especially for users who may face language, digital-literacy, or financial-complexity barriers.
 
-### Day 1 – Voice agent foundation
+ArthMitra can explain government schemes, banking services, digital payments, financial concepts, exchange rates, and fraud awareness while maintaining strict safety and privacy boundaries.
 
-- React + Vite frontend and FastAPI backend
-- WebSocket voice-conversation pipeline
-- Deepgram speech-to-text
-- Gemini-powered responses
-- Murf AI text-to-speech with an Indian English voice
+---
 
-```text
-User speech → Deepgram STT → Gemini → Murf TTS → voice response
-```
+## What ArthMitra Does
 
-### Day 2 – Personality, context, and guardrails
+ArthMitra combines voice AI, financial tools, consent-based memory, human escalation, outbound calling, analytics, and specialist handoffs into one conversational financial assistant.
 
-- Defined ArthMitra as a trustworthy financial assistant for Bharat.
-- Added session-based conversation history for natural follow-up questions.
-- Added an automatic spoken greeting when a voice call begins.
-- Supports English, Hindi, and Hindi–English code-mixed conversations by mirroring the user’s language.
-- Added financial-safety guardrails: ArthMitra never asks for an OTP, PIN, password, CVV, card number, or account number, and cannot access accounts or perform transactions.
+### Core capabilities
 
-### Day 3 – Personalised financial-services frontend
+- Voice-based financial conversations
+- English, Hindi, and Hindi-English code-mixed conversations
+- Government scheme information and document guidance
+- Live exchange-rate lookup
+- Banking and digital-payment literacy
+- Financial fraud awareness
+- Consent-based caller memory
+- Outbound scheme-deadline reminder calls
+- Human escalation for sensitive or account-specific situations
+- Privacy-safe call analytics
+- Specialist handoff for government-scheme questions
+- Graceful handling of API, transcription, audio, and data-source failures
 
-- Built a financial-services visual identity with a dedicated capability panel and conversation workspace.
-- Added clear voice-agent states: Ready, Connecting, Listening, Speaking, and Call Ended.
-- Added user and assistant chat bubbles, audio feedback, microphone permission errors, call controls, and restart flow.
-- Made the experience responsive: the capability panel and conversation area stack on smaller screens.
+---
 
-### Day 4 – Consent-based caller memory
+## Voice Conversation
 
-ArthMitra can now remember useful, non-sensitive context across voice calls—but only with the caller’s explicit permission.
-
-- Each browser receives a persistent anonymous caller ID stored in `localStorage` and sends it when a WebSocket session begins.
-- Caller memory is stored locally in SQLite and initialised when the FastAPI app starts.
-- Gemini has controlled function tools to look up the active caller and save memory after consent.
-- On a returning caller’s greeting, ArthMitra can welcome them back by name and continue an approved follow-up topic.
-- The assistant must explain what it wants to remember and receive an explicit “yes” before saving anything.
-- Memory is limited to a name, language preference, scheme interests, scheme/eligibility answers, and a follow-up topic.
-- The backend rejects memory saves without consent and blocks sensitive keys or long number strings, including account, card, Aadhaar, PAN, OTP, PIN, password, CVV, and IFSC-related data.
-- Unit tests cover permitted storage, missing consent, and sensitive-data rejection.
+The core interaction follows a simple voice pipeline:
 
 ```text
-New / returning caller
-        ↓
-Browser caller ID (localStorage)
-        ↓
-WebSocket session_init
-        ↓
-Gemini lookup_caller tool
-        ↓
-SQLite consented memory
-        ↓
-Personalised, safety-bounded greeting or follow-up
+User speaks
+     ↓
+Deepgram Speech-to-Text
+     ↓
+Conversation Manager
+     ↓
+Gemini
+     ↓
+Murf AI Text-to-Speech
+     ↓
+User hears response
+```
+The browser communicates with the FastAPI backend through WebSockets so the conversation can remain interactive.
+
+ArthMitra also maintains the current conversation context so follow-up questions feel like part of the same conversation rather than isolated requests.
+
+###Multilingual Conversations
+
+ArthMitra is designed for Bharat's multilingual environment.
+
+It can handle:
+
+- English
+- Hindi
+- Hindi-English code mixing
+
+The assistant is instructed to mirror the user's language and communication style instead of forcing every conversation into English.
+
+For example:
+```
+User:
+"PMJJBY ke liye documents kya chahiye?"
+
+
+ArthMitra:
+"PMJJBY ke liye aapko..."
+```
+This is particularly important for a financial assistant because complicated financial terminology can become a barrier when users are more comfortable communicating in their local language.
+
+###Financial Safety Guardrails
+
+ArthMitra is an educational financial assistant, not a bank or financial institution.
+
+It cannot:
+
+- Access bank accounts
+- Perform transactions
+- Approve loans or schemes
+- Verify account ownership
+- Make investment decisions
+- Provide account-specific approvals
+
+It also never asks users for sensitive credentials such as:
+
+- OTP
+- PIN
+- Password
+- CVV
+- Account numbers
+- Card numbers
+- Aadhaar
+- PAN
+- IFSC-related sensitive information
+
+For account-specific situations, the assistant directs users toward official bank customer care or their nearest branch.
+
+###Consent-Based Caller Memory
+
+ArthMitra can remember useful, non-sensitive information across browser voice sessions, but memory is **opt-in**.
+
+Each browser receives a persistent anonymous caller ID through localStorage. When a new WebSocket session starts, that identifier allows the backend to identify a returning caller without exposing their identity.
+
+```
+Browser
+   ↓
+Anonymous caller ID
+   ↓
+WebSocket session
+   ↓
+Gemini memory tool
+   ↓
+SQLite
+   ↓
+Approved caller context
 ```
 
-### Day 5 - Live financial-data tool
+###What can be remembered
 
-ArthMitra now has a Gemini function tool, `get_live_exchange_rate`, for questions that need current financial data, such as “What is today’s USD to INR rate?” The model is instructed to call it for live/current exchange-rate or conversion requests, rather than guessing from its training data.
+Memory is intentionally limited to useful conversational context such as:
 
-- **Data is live:** the backend fetches the public ExchangeRate-API open-access feed at request time; it is not a hand-built local dataset.
-- Every successful tool result includes the provider’s **last-updated timestamp**, which ArthMitra must speak naturally along with the reference rate.
-- Rates are reference market rates only; a bank or authorised money changer may quote a different customer rate.
-- The lookup uses a five-second timeout. If the source is unavailable, the tool returns an explicit unavailable result and the assistant says it cannot fetch the live rate right now—it does not invent one.
+Name
+Language preference
+Scheme interests
+Scheme/eligibility answers
+Follow-up topic
 
-Try it after connecting to the agent: **“What is today’s USD to INR exchange rate?”** The agent should call the tool without being explicitly told to do so. To exercise the failure path, disconnect the backend from the internet or temporarily set `EXCHANGE_RATE_URL` in `backend/app/services/exchange_rate_service.py` to an invalid address; the spoken reply should say the live rate is temporarily unavailable.
+ArthMitra must explain what it wants to remember and receive explicit permission before saving it.
 
-### Local central-government scheme lookup
+The backend also rejects memory operations that contain sensitive information or restricted keys.
 
-ArthMitra also has a `lookup_government_scheme` function tool for named Indian central-government schemes. It uses the hand-built local dataset at `backend/app/data/government_schemes.json`; it is **not live data**. The dataset covers PMJDY, PMSBY, PMJJBY, APY, and PMMY, is labelled with an as-of date, and links each result to an official portal for final verification.
+This allows returning users to receive a more personalised experience without turning the system into a repository of financial credentials.
 
-The function description tells Gemini to call it only for questions about a named scheme’s eligibility, benefits, documents, enrolment, ministry, or official portal. It must not guess a scheme’s details when the lookup does not find it.
+###Government Scheme Intelligence
 
-Failure handling is visible in the conversation: transcription failures, Gemini/backend failures, and Murf audio failures all preserve the WebSocket session and send a readable fallback reply to the frontend. If audio generation fails, the response remains visible as text; if the assistant service is unavailable, the UI also shows a status message above the conversation.
+ArthMitra includes a controlled government-scheme lookup tool.
 
-Try: **“What are the eligibility rules for PMSBY?”** To test the local-data failure path, temporarily rename `backend/app/data/government_schemes.json`; the assistant should say that the local scheme information is unavailable rather than inventing an answer.
+The local dataset currently contains information for:
 
-### Day 6 – Outbound scheme-deadline reminder
+- PMJDY
+- PMSBY
+- PMJJBY
+- APY
+- PMMY
 
-ArthMitra can now make an outbound reminder call to someone who was already found eligible for a government scheme. The call opens with who is calling, why, and an immediate opt-out: **“Hello, this is ArthMitra, a financial guidance assistant calling because [scheme] has an approaching application deadline of [date]. To stop future reminder calls, say stop or press 9.”**
+The dataset is clearly treated as **local, not live data**, and includes an as-of date and official portal references for final verification.
 
-Twilio dials the phone number and posts call events to FastAPI. The call uses speech/DTMF gathering, Gemini for the short follow-up, and Murf audio where available (with Twilio TTS as a fallback). Saying **stop**, **opt out**, **unsubscribe**, **do not call**, or pressing **9** writes a durable do-not-call record; later call attempts to that number are rejected.
+The lookup can provide information such as:
 
-Configure `backend/.env` from `backend/.env.example`:
+- Eligibility
+- Benefits
+- Required documents
+- Enrolment
+- Ministry
+- Official portal
 
-```env
-TWILIO_ACCOUNT_SID=...
-TWILIO_AUTH_TOKEN=...
-TWILIO_PHONE_NUMBER=+1...
-PUBLIC_BASE_URL=https://your-public-https-url
-OUTBOUND_API_KEY=choose-a-long-secret
+If a scheme is not present in the local dataset, ArthMitra does not invent the information.
+
+For example, if a user asks about a scheme that has not been included in the dataset, the assistant can explain that it currently does not have verified information rather than hallucinating an answer.
+
+###Live Exchange Rates
+
+For questions requiring current financial data, ArthMitra uses a Gemini function tool:
+```
+get_live_exchange_rate
+```
+For example:
+```
+"What is today's USD to INR exchange rate?"
+```
+The backend retrieves the current reference rate from the public ExchangeRate-API feed instead of relying on the model's training data.
+
+Each successful result includes the provider's last-updated timestamp.
+
+The assistant also explains that the returned value is a reference market rate and that banks or authorised money changers may provide different customer rates.
+
+###Failure handling
+
+The exchange-rate lookup has a five-second timeout.
+
+If the external source is unavailable, ArthMitra does not guess a number. It returns a clear response explaining that the live rate is temporarily unavailable.
+
+###Outbound Calling
+
+ArthMitra can initiate outbound calls for controlled financial-service use cases such as government-scheme deadline reminders.
+
+The outbound call clearly communicates:
+
+Who is calling
+Why the user is being contacted
+How the user can opt out
+
+Example:
+```
+Hello, this is ArthMitra, a financial guidance assistant
+calling because [scheme] has an approaching application deadline.
+
+To stop future reminder calls, say stop or press 9.
+```
+Twilio handles the outbound telephony connection.
+
+Opt-out phrases such as:
+```
+stop
+opt out
+unsubscribe
+do not call
+```
+and pressing ```9``` create a durable do-not-call record.
+
+Future outbound attempts to that number are rejected.
+
+For testing, outbound calls should only be made to numbers controlled by the developer or explicitly authorised recipients.
+
+###Human Escalation
+
+ArthMitra does not attempt to solve every financial problem itself.
+
+It can create a human-help request when:
+
+- A caller reports possible financial fraud
+- A caller needs an account-specific decision or approval that ArthMitra cannot provide
+
+Before creating an escalation, the assistant explains what information will be shared and asks for explicit permission.
+
+Only a short summary is sent, containing useful context such as:
+
+- Caller name, if known
+- What happened
+- Checks already completed
+- Urgency
+- Language
+- Preferred follow-up method
+
+Sensitive information is rejected by the backend.
+
+Approved requests are stored in SQLite and receive a reference ID such as:
+```
+ESC-...
+```
+The caller receives the reference ID and an honest explanation that a human will review the request.
+
+No immediate response is promised unless one is actually available.
+
+Escalation dashboard
+
+Local escalation requests can be viewed at:
+```
+http://127.0.0.1:8000/escalations
+```
+The queue is also available through:
+```
+/api/escalations
 ```
 
-`PUBLIC_BASE_URL` must be public HTTPS URL Twilio can reach (a deployed backend or temporary HTTPS tunnel). Start the API, then place one controlled test call:
+###Privacy-Safe Call Analytics
 
-```bash
-curl -X POST http://127.0.0.1:8000/outbound/call \
-  -H "Content-Type: application/json" \
-  -H "X-Outbound-Api-Key: your-secret" \
-  -d '{"to_number":"+919876543210","scheme_name":"Pradhan Mantri Suraksha Bima Yojana","deadline":"31 August 2026"}'
+ArthMitra records the outcome of completed browser voice calls without exposing caller information.
+
+A call is considered **successful** when the caller receives:
+
+- A government-scheme document list, or
+- A scheme eligibility answer
+
+Calls that end without reaching one of these outcomes are recorded as failed.
+
+The analytics record contains only information such as:
+
+- Channel
+- Timestamp
+- Outcome
+- Completion category
+
+It does ```not``` store:
+
+- Caller IDs
+- Full transcripts
+- Passwords
+- OTPs
+- PINs
+- Account details
+- Sensitive financial information
+
+###Analytics dashboard
+
+Open:
+```
+http://127.0.0.1:8000/analytics
+```
+The dashboard provides:
+```
+Total Calls
+Successful Calls
+Failed Calls
+```
+Aggregate analytics are also available through:
+```
+/api/call-analytics
 ```
 
-Use only a number you control while recording the demonstration. The response contains the Twilio Call SID, which you can track in the Twilio Console.
+###Specialist Agent Handoff
 
-### Day 7 – Human help with privacy and consent
+ArthMitra uses a specialist-agent architecture instead of forcing one agent to handle every type of financial question.
 
-ArthMitra now escalates only two kinds of browser-agent conversations: a caller reporting possible fraud, and a caller who needs an approval or account-specific decision ArthMitra cannot make. Normal scheme, literacy, and exchange-rate questions stay with the agent.
+There are two distinct conversational roles:
 
-Before it creates a request, ArthMitra explains that it will share only a short summary (caller name if known, what happened, checks already completed, urgency, language, and preferred follow-up method) and asks for explicit permission. A refusal never creates a request. The backend rejects summaries containing credentials or sensitive identifiers, including OTPs, PINs, passwords, account/card numbers, Aadhaar, PAN, CVV, and IFSC.
+###Main ArthMitra Agent
 
-Approved requests are stored in the local SQLite help queue with a generated `ESC-...` reference ID. The agent gives this ID to the caller and honestly says that a human will review the request and use the requested follow-up method, without promising an immediate response. View the real local dashboard at [http://127.0.0.1:8000/escalations](http://127.0.0.1:8000/escalations), or consume the queue as JSON at `/api/escalations`.
+Handles:
 
-Test paths:
+- Financial literacy
+- Banking questions
+- Digital payments
+- Exchange rates
+- Fraud awareness
+- General financial guidance
 
-- Escalation: say that you saw an unfamiliar transaction or need a decision the agent cannot make; approve the requested summary sharing; confirm a reference ID is returned and appears in the dashboard.
-- Normal: ask about PMSBY eligibility or financial literacy; confirm that no request is created.
+###Government Scheme Specialist
 
-### Day 8 – Call analytics dashboard
+Handles only:
+- Named government scheme eligibility
+- Benefits
+- Required documents
+- Enrolment
+- Ministry information
+- Official portals
 
-ArthMitra records a privacy-safe outcome for every completed browser voice call. A call is **successful** when the caller receives a scheme document list or an eligibility answer; an ended call that did not reach either outcome is **failed**. The record contains only the channel, timestamps, outcome, and completion category—never a caller ID, transcript, credentials, or account details.
-
-Open [http://127.0.0.1:8000/analytics](http://127.0.0.1:8000/analytics) to see real aggregate **Total calls**, **Successful calls**, and **Failed calls**. The same aggregate data is available at `/api/call-analytics`.
-
-To exercise the success path, start a browser voice call and ask a named-scheme document question, for example: **“What documents do I need for PMSBY?”** End the call after ArthMitra answers; total and successful calls will each increase by one.
-
-### Day 9 – Government-scheme specialist handoff
-
-ArthMitra now has two distinct agents:
-
-- **Main ArthMitra agent:** general financial literacy, banking, digital payments, exchange rates, and fraud awareness.
-- **Government Scheme Specialist:** only named Indian central-government scheme eligibility, benefits, documents, enrolment, ministries, and official portals.
-
-The main agent has a `transfer_to_government_scheme_specialist` tool. Its description limits use to a named scheme (for example, PMSBY, PMJDY, PMJJBY, APY, or PMMY) and explicitly excludes general financial questions. When Gemini selects the tool, the backend copies the entire current conversation to the specialist, sets that specialist as the active agent for later turns, and replies: **“I will connect you to our government schemes specialist. Government Schemes Specialist here.”** The specialist then answers the original request using the local scheme dataset, without asking the caller to repeat it.
-
-Test both paths after starting the backend and frontend:
-
-- Normal/main-agent path: ask **“What is the difference between a debit card and a credit card?”** It should be answered by ArthMitra without a handoff.
-- Specialist path: ask **“What documents do I need for PMSBY?”** ArthMitra should announce the handoff, then the Government Schemes Specialist should continue that exact request and use the scheme lookup.
-
-### Day 10 – Share Your Voice Agent Journey
-
-Today marks the final day of the **Murf AI 10 Days of Voice Agents – VoiceForBharat Edition**.
-
-For Day 10, the objective was to document and share the complete journey of building **ArthMitra AI** through a public blog.
-
-The blog covers:
-
-- The problem ArthMitra solves and who it is built for
-- The important features developed throughout the challenge
-- How the voice agent works
-- The major challenges and how they were handled
-- Practical learnings for others building voice agents
-- Evidence and links from the project
-- Future improvements
-
-The final blog was published and shared on LinkedIn as part of the challenge.
-
-**Final Blog:** [Read the ArthMitra AI Journey](https://lnkd.in/dsTYZRky)
-
-With this, the **10 Days of Voice Agents – VoiceForBharat Edition** journey is complete.
-
-## Current architecture
-
-```text
-Browser (React)
-  ├─ microphone recording
-  ├─ persistent anonymous caller ID
-  └─ WebSocket
-          ↓
-FastAPI
-  ├─ Deepgram: speech → transcript
-  ├─ ConversationManager: current-call context
-  ├─ Gemini: response + controlled memory tools
-  ├─ SQLite: consented caller memory
-  └─ Murf AI: response → audio URL
-          ↓
-Browser playback and chat history
+The main agent has a controlled handoff tool:
 ```
+transfer_to_government_scheme_specialist
+```
+When a user asks a question that requires the specialist, ArthMitra clearly announces the handoff:
+```
+I will connect you to our government schemes specialist.
+```
+The specialist then continues with the existing conversation context.
 
-## Tech stack
+The user does not need to repeat their original question.
 
-| Area | Technology |
-| --- | --- |
-| Frontend | React, Vite, Tailwind CSS, WebSocket |
-| Backend | Python, FastAPI, SQLite |
-| AI | Google Gemini |
-| Speech | Deepgram STT, Murf AI TTS |
+For example:
+```
+User:
+"What documents do I need for PMSBY?"
 
-## Project structure
 
-```text
+Main Agent:
+"I will connect you to our government schemes specialist."
+
+
+Specialist:
+"Government Schemes Specialist here..."
+```
+Normal financial questions remain with the main agent.
+
+###Failure Handling
+
+Voice systems depend on multiple external services, so failures are treated as part of the design rather than unexpected exceptions.
+
+ArthMitra handles failures from:
+
+- Speech-to-text
+- Gemini
+- Exchange-rate API
+- Government-scheme data
+- Murf audio generation
+- Backend services
+- WebSocket communication
+
+The goal is to keep the conversation alive whenever possible.
+
+For example, if Murf audio generation fails, the assistant can still return the response as text instead of losing the entire conversation.
+
+If an external data source is unavailable, ArthMitra explains that the information cannot currently be fetched instead of inventing an answer.
+
+###Architecture
+```
+                         ┌─────────────────────┐
+                         │     React Frontend  │
+                         │                     │
+                         │  Microphone / UI    │
+                         │  Caller ID          │
+                         └──────────┬──────────┘
+                                    │
+                                WebSocket
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │      FastAPI        │
+                         │                     │
+                         │ Conversation Layer  │
+                         │ Tool Orchestration  │
+                         │ Session Management  │
+                         └───────┬─────┬───────┘
+                                 │     │
+              ┌──────────────────┘     └──────────────────┐
+              ▼                                           ▼
+       ┌──────────────┐                            ┌──────────────┐
+       │   Deepgram   │                            │    Gemini    │
+       │     STT      │                            │  Reasoning   │
+       └──────────────┘                            └──────┬───────┘
+                                                         │
+                          ┌──────────────────────────────┼────────────────────┐
+                          │                              │                    │
+                          ▼                              ▼                    ▼
+                  ┌──────────────┐              ┌──────────────┐     ┌──────────────┐
+                  │ Memory Tools │              │ Financial    │     │ Specialist   │
+                  │              │              │ Tools        │     │ Handoff      │
+                  └──────┬───────┘              └──────────────┘     └──────────────┘
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │    SQLite    │
+                  │ Memory /     │
+                  │ Escalations  │
+                  │ Analytics    │
+                  └──────────────┘
+                                 Gemini Response
+                                       │
+                                       ▼
+                               ┌────────────────┐
+                               │    Murf AI     │
+                               │     TTS        │
+                               └───────┬────────┘
+                                       │
+                                       ▼
+                                 Voice Response
+ ```
+###Technology Stack
+Layer	Technology
+Frontend	React, Vite, Tailwind CSS
+Real-time communication	WebSocket
+Backend	Python, FastAPI
+Database	SQLite
+LLM	Google Gemini
+Speech-to-Text	Deepgram
+Text-to-Speech	Murf AI
+Telephony	Twilio
+Live financial data	ExchangeRate-API
+Browser memory	localStorage
+###Project Structure
+```
 ArthMitra-AI/
+│
 ├── backend/
 │   ├── app/
-│   │   ├── core/config.py
-│   │   ├── memory.py                 # Consent-gated SQLite caller memory
+│   │   ├── core/
+│   │   │   └── config.py
+│   │   │
+│   │   ├── data/
+│   │   │   └── government_schemes.json
+│   │   │
 │   │   ├── prompts/
 │   │   │   ├── greeting.py
 │   │   │   └── system_prompt.py
-│   │   └── services/
-│   │       ├── conversation_manager.py
-│   │       ├── deepgram_service.py
-│   │       ├── gemini_service.py     # Gemini + memory function tools
-│   │       └── murf_service.py
-│   ├── main.py                       # FastAPI REST and WebSocket entry point
+│   │   │
+│   │   ├── services/
+│   │   │   ├── conversation_manager.py
+│   │   │   ├── deepgram_service.py
+│   │   │   ├── exchange_rate_service.py
+│   │   │   ├── gemini_service.py
+│   │   │   └── murf_service.py
+│   │   │
+│   │   └── memory.py
+│   │
+│   ├── main.py
 │   ├── test_memory.py
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── .env.example
+│
 ├── frontend/
 │   └── src/
 │       ├── components/
-│       ├── services/websocket.js
+│       ├── services/
+│       │   └── websocket.js
 │       └── App.jsx
+│
 └── README.md
 ```
+##Running Locally
+1. Clone the repository
+```
+git clone <your-repository-url>
+cd ArthMitra-AI
+```
+2. Configure environment variables
 
-## Run locally
-
-Create `backend/.env` with the required credentials:
-
-```env
+Create:
+```
+backend/.env
+```
+Add the required API credentials:
+```
 GEMINI_API_KEY=your_key
 DEEPGRAM_API_KEY=your_key
 MURF_API_KEY=your_key
 ```
+For outbound calling, configure the Twilio credentials and public backend URL as required:
+```
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_PHONE_NUMBER=your_twilio_number
+PUBLIC_BASE_URL=https://your-public-https-url
+OUTBOUND_API_KEY=your_secret
+```
+Never commit .env files or API keys to the repository.
 
-Start the backend:
-
-```bash
+3. Start the backend
+```
 cd backend
 uvicorn main:app --reload
 ```
+4. Start the frontend
 
-Start the frontend in another terminal:
-
-```bash
+Open another terminal:
+```
 cd frontend
 npm install
 npm run dev
 ```
+Open the local frontend URL shown by Vite and allow microphone access.
 
-Run caller-memory tests:
+###Testing Caller Memory
 
-```bash
-cd backend
+From the backend directory:
+```
 python -m unittest test_memory.py
 ```
+The memory tests cover:
+- Permitted memory storage
+- Missing consent
+- Sensitive-data rejection
 
-## Safety and privacy
+###Testing the Voice Agen
+After starting the frontend and backend:
+- Allow microphone access.
+- Start a voice session.
+- Ask a general financial question.
+- Ask a named government-scheme question.
+- Test a live exchange-rate question.
+- Test the consent flow for caller memory.
+- Test the human-escalation flow.
+- Check the analytics dashboard after ending the call.
 
-ArthMitra provides educational financial guidance, not personalised financial, legal, or investment advice. It never impersonates a bank and directs account-specific requests to official bank customer care or a branch. Never share OTPs, PINs, passwords, card details, or other credentials with anyone.
+Example questions:
+```
+"What is the difference between a debit card and a credit card?"
 
-Persistent memory is opt-in. The implementation stores only a narrow, approved set of non-sensitive conversation details and rejects sensitive financial or identity information.
+"What documents do I need for PMSBY?"
 
-## Current limitations
+"What is today's USD to INR exchange rate?"
 
-- Recording uses a fixed audio window; speech is not yet continuously streamed.
-- Gemini and Murf responses are generated before playback rather than streamed progressively.
-- This produces an end-to-end baseline latency of roughly 10–12 seconds after the user stops speaking.
-- Caller memory is local to the current backend’s SQLite database and is not yet accompanied by a user-facing memory-management or deletion screen.
-- Scheme guidance should be verified against official sources when users need current eligibility or policy details.
+"I saw an unfamiliar transaction."
 
-## Next steps
+"Can you remember my name?"
+```
+###Important Environment Variables
+Variable	Purpose
+GEMINI_API_KEY	Gemini model access
+DEEPGRAM_API_KEY	Speech-to-text
+MURF_API_KEY	Text-to-speech
+TWILIO_ACCOUNT_SID	Twilio authentication
+TWILIO_AUTH_TOKEN	Twilio authentication
+TWILIO_PHONE_NUMBER	Outbound caller number
+PUBLIC_BASE_URL	Public HTTPS backend URL for Twilio
+OUTBOUND_API_KEY	Protects outbound-call API
+EXCHANGE_RATE_URL	Optional exchange-rate source override
 
-- Stream speech-to-text and Murf Falcon audio to reduce perceived latency.
-- Improve multilingual voice quality and language detection.
-- Add official scheme-information workflows and source-backed responses.
-- Add caller-facing controls to view, update, or delete saved memory.
-- Deploy the voice experience for broader access.
+Keep all credentials private.
 
-## Vision
+##3Privacy and Security
 
-ArthMitra AI aims to make financial information easier to understand for people who face language, digital-literacy, or complexity barriers. It is an accessible conversational layer—not a replacement for banks or financial institutions.
+Privacy is a core design principle of ArthMitra.
 
-Built for **Murf AI – 10 Days of Voice Agents, VoiceForBharat Edition**.
-Track: **Financial Services**
+###Caller memory
+
+Memory is saved only after explicit user consent.
+
+###Sensitive information
+
+The system is designed to reject sensitive information such as:
+```
+OTP
+PIN
+Password
+CVV
+Account Number
+Card Number
+Aadhaar
+PAN
+IFSC
+```
+###Analytics
+
+Analytics are aggregate and privacy-safe. Caller identifiers and conversation transcripts are not displayed on the analytics dashboard.
+
+###Human escalation
+
+Escalation summaries are intentionally limited to the information required for a human to understand and follow up on the issue.
+
+O###utbound calls
+
+Outbound calling includes an explicit opt-out mechanism and a durable do-not-call record.
+
+###Design Principles
+**1. Voice first**
+
+Financial information should be accessible through conversation, not only through complex interfaces.
+
+**2. Explain, don't transact**
+
+ArthMitra helps users understand financial services but never pretends to be a bank or perform financial transactions.
+
+**3. Consent before memory**
+
+Personalisation should not come at the cost of user control.
+
+**4. Fail safely**
+
+When a tool or API fails, ArthMitra should communicate the limitation rather than hallucinate an answer.
+
+**5. Specialist over generalisation**
+
+Complex domains are handled through focused specialist agents instead of making one agent responsible for everything.
+
+**6. Human help when necessary**
+
+An AI assistant should know when it has reached the boundary of what it can safely handle.
+
+###Current Limitations
+- Voice recording currently uses a fixed audio window rather than continuous streaming.
+- Gemini and Murf responses are generated before playback rather than being fully streamed.
+- End-to-end response latency can be around 10–12 seconds after the user stops speaking.
+- Caller memory currently uses a local SQLite database.
+- There is no dedicated user-facing memory-management or deletion interface yet.
+- The local government-scheme dataset is not a live government database.
+- Scheme information should be verified against official government sources when current policy or eligibility details are important.
+- Multilingual speech recognition and voice quality can still vary depending on pronunciation, audio quality, and language mixing.
+
+###Future Improvements
+
+Potential next steps include:
+- Continuous streaming speech recognition
+- Streaming TTS for lower perceived latency
+- Improved Indian-language voice quality
+- More official and source-backed government scheme information
+- User-facing memory management and deletion
+- More specialist financial agents
+- Better analytics and latency monitoring
+- Production-grade deployment
+- Broader telephony support
+- Stronger automated safety and privacy testing
+
+###Vision
+
+ArthMitra AI is built around a simple idea:
+
+**Financial information should be understandable before it becomes actionable.**
+
+The goal is not to replace banks, financial institutions, or human advisors.
+
+The goal is to provide an accessible conversational layer that helps people understand financial services, discover relevant government schemes, recognise potential fraud, and know when to seek human assistance.
+
+Built for **Murf AI – 10 Days of Voice Agents: VoiceForBharat Edition.**
+
+**Track: Financial Services
+**TTS:** Murf AI
+**STT:** Deepgram
+**LLM:** Google Gemini
+**Backend:** FastAPI
+**Frontend:** React + Vite
