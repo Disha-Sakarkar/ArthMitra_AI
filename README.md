@@ -121,31 +121,49 @@ Test paths:
 - Escalation: say that you saw an unfamiliar transaction or need a decision the agent cannot make; approve the requested summary sharing; confirm a reference ID is returned and appears in the dashboard.
 - Normal: ask about PMSBY eligibility or financial literacy; confirm that no request is created.
 
-## Day 8 – Build a Call Analytics Dashboard
+### Day 8 – Call analytics dashboard
 
- a dedicated Call Analytics Dashboard was implemented to track real-time agent performance, record call outcomes, and ensure privacy-safe telemetry monitoring.
+ArthMitra records a privacy-safe outcome for every completed browser voice call. A call is **successful** when the caller receives a scheme document list or an eligibility answer; an ended call that did not reach either outcome is **failed**. The record contains only the channel, timestamps, outcome, and completion category—never a caller ID, transcript, credentials, or account details.
 
-### Key Requirements Implemented
+Open [http://127.0.0.1:8000/analytics](http://127.0.0.1:8000/analytics) to see real aggregate **Total calls**, **Successful calls**, and **Failed calls**. The same aggregate data is available at `/api/call-analytics`.
 
-1. **Success Condition Definition**
-   - Defined clear success criteria based on the track objectives:
-     - **Success:** The caller receives an eligibility answer or a scheme document list.
-     - **Failure:** The call ends before reaching either success condition (e.g., user hangs up early or abandons inquiry).
+To exercise the success path, start a browser voice call and ask a named-scheme document question, for example: **“What documents do I need for PMSBY?”** End the call after ArthMitra answers; total and successful calls will each increase by one.
 
-2. **Call Outcome Tracking**
-   - Captured call duration, status, and outcome upon every call completion.
-   - Saved call metadata directly to the database without hardcoded values.
+### Day 9 – Government-scheme specialist handoff
 
-3. **Core Dashboard Metrics**
-   - **Total Calls:** Aggregated count of all completed calls.
-   - **Successful Calls:** Count of calls meeting the defined success condition.
-   - **Failed Calls:** Count of calls ending before reaching the success condition.
+ArthMitra now has two distinct agents:
 
-4. **Real Data Integration**
-   - Connected the dashboard directly to backend API endpoints receiving live browser/SIP call metrics.
+- **Main ArthMitra agent:** general financial literacy, banking, digital payments, exchange rates, and fraud awareness.
+- **Government Scheme Specialist:** only named Indian central-government scheme eligibility, benefits, documents, enrolment, ministries, and official portals.
 
-5. **Caller Privacy & Security**
-   - Strictly enforced data privacy rules—no passwords, OTPs, PINs, account details, or full conversation transcripts are stored or rendered on the dashboard.
+The main agent has a `transfer_to_government_scheme_specialist` tool. Its description limits use to a named scheme (for example, PMSBY, PMJDY, PMJJBY, APY, or PMMY) and explicitly excludes general financial questions. When Gemini selects the tool, the backend copies the entire current conversation to the specialist, sets that specialist as the active agent for later turns, and replies: **“I will connect you to our government schemes specialist. Government Schemes Specialist here.”** The specialist then answers the original request using the local scheme dataset, without asking the caller to repeat it.
+
+Test both paths after starting the backend and frontend:
+
+- Normal/main-agent path: ask **“What is the difference between a debit card and a credit card?”** It should be answered by ArthMitra without a handoff.
+- Specialist path: ask **“What documents do I need for PMSBY?”** ArthMitra should announce the handoff, then the Government Schemes Specialist should continue that exact request and use the scheme lookup.
+
+# Day 10 – Share Your Voice Agent Journey
+
+Today marks the final day of the **Murf AI 10 Days of Voice Agents – VoiceForBharat Edition**.
+
+For Day 10, the objective was to document and share the complete journey of building **ArthMitra AI** through a public blog.
+
+The blog covers:
+
+- The problem ArthMitra solves and who it is built for
+- The important features developed throughout the challenge
+- How the voice agent works
+- The major challenges and how they were handled
+- Practical learnings for others building voice agents
+- Evidence and links from the project
+- Future improvements
+
+The final blog was published and shared on LinkedIn as part of the challenge.
+
+**Final Blog:** [Read the ArthMitra AI Journey](https://lnkd.in/dsTYZRky)
+
+With this, the **10 Days of Voice Agents – VoiceForBharat Edition** journey is complete.
 
 ## Current architecture
 
@@ -246,28 +264,6 @@ Persistent memory is opt-in. The implementation stores only a narrow, approved s
 - This produces an end-to-end baseline latency of roughly 10–12 seconds after the user stops speaking.
 - Caller memory is local to the current backend’s SQLite database and is not yet accompanied by a user-facing memory-management or deletion screen.
 - Scheme guidance should be verified against official sources when users need current eligibility or policy details.
-
-### Day 8 – Call analytics dashboard
-
-ArthMitra records a privacy-safe outcome for every completed browser voice call. A call is **successful** when the caller receives a scheme document list or an eligibility answer; an ended call that did not reach either outcome is **failed**. The record contains only the channel, timestamps, outcome, and completion category—never a caller ID, transcript, credentials, or account details.
-
-Open [http://127.0.0.1:8000/analytics](http://127.0.0.1:8000/analytics) to see real aggregate **Total calls**, **Successful calls**, and **Failed calls**. The same aggregate data is available at `/api/call-analytics`.
-
-To exercise the success path, start a browser voice call and ask a named-scheme document question, for example: **“What documents do I need for PMSBY?”** End the call after ArthMitra answers; total and successful calls will each increase by one.
-
-### Day 9 – Government-scheme specialist handoff
-
-ArthMitra now has two distinct agents:
-
-- **Main ArthMitra agent:** general financial literacy, banking, digital payments, exchange rates, and fraud awareness.
-- **Government Scheme Specialist:** only named Indian central-government scheme eligibility, benefits, documents, enrolment, ministries, and official portals.
-
-The main agent has a `transfer_to_government_scheme_specialist` tool. Its description limits use to a named scheme (for example, PMSBY, PMJDY, PMJJBY, APY, or PMMY) and explicitly excludes general financial questions. When Gemini selects the tool, the backend copies the entire current conversation to the specialist, sets that specialist as the active agent for later turns, and replies: **“I will connect you to our government schemes specialist. Government Schemes Specialist here.”** The specialist then answers the original request using the local scheme dataset, without asking the caller to repeat it.
-
-Test both paths after starting the backend and frontend:
-
-- Normal/main-agent path: ask **“What is the difference between a debit card and a credit card?”** It should be answered by ArthMitra without a handoff.
-- Specialist path: ask **“What documents do I need for PMSBY?”** ArthMitra should announce the handoff, then the Government Schemes Specialist should continue that exact request and use the scheme lookup.
 
 ## Next steps
 
